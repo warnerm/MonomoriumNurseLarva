@@ -5,22 +5,22 @@ import math as m
 plt.figure(figsize=(6,6),facecolor='white')
 plt.subplot(111)
 
-n=10
-cx = cy = 0.5
-r = 0.15
-center = [[0.5,0.33,0.67],[0.33,0.67,0.67]]
-
+n=3
+circSize = 2000
+r = 0.35
+center = [[0.5,0,1],[0.1,1,1]]
+colors = ["#000000", "#E69F00", "#56B4E9"]
 
 
 def Addcircles():
 	for i in range(3):
-		AddOneType(center[0][i],center[1][i],r,n)
+		AddOneType(center[0][i],center[1][i],r,n,colors[i])
 	return
 
-def AddOneType(cx, cy, r, n):
+def AddOneType(cx, cy, r, n,color):
 	P = CircleCoord (cx,cy,r,n)
-	S = np.linspace(50,50,n*2)
-	scat = plt.scatter(P[:,0],P[:,1],s=S,lw = 0.5)
+	S = np.linspace(circSize,circSize,n*2)
+	scat = plt.scatter(P[:,0],P[:,1],s=S,lw = 0.5,marker="^",color=color)
 	return
 
 def CircleCoord ( cx, cy, r, n):
