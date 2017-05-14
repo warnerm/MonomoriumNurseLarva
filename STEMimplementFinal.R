@@ -44,114 +44,7 @@ EdgeR <- function(data,design,coef){
 	return(out)
 }
 
-
-
-###Main effect models (main effect dependent upon input). QP is FALSE when we are only comparing within QL colonies
-DEmain <- function(code,main,coef,permute=FALSE,QP=TRUE,trial = NULL){
-	if (permute){
-		print(trial)
-	}
-	#while (TRUE){ ##For permuted data, errors happen, but we just want the program to try again
-		load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
-		counts <- counts[,grep(code,colnames(counts))]
-		factors <- droplevels(factors[grep(code,rownames(factors)),])
-		if (permute){ ##In some cases we want to use this function to calculate number of DE genes with samples permuted
-			factors$stage = sample(factors$stage,nrow(factors),replace=F)
-		}
-		design <- makeModel(main,factors,QP)
-		
-		x <- try(EdgeR(counts,design,coef)) ##Protects from annoying errors that happen with resampling
-		if (!inherits(x,"try-error")){
-			return(rownames(x)[x$FDR<0.05])
-		} else if (!permute){ ##For non-permuted data, return an error if it is necessary
-			return("error")
-		} 
-	#}
-}
-
-##Make design matrix based on factors file and which main effect to use
-makeModel <- function(main,factors,QP){
-	##Below we use additive models. If we look across QL and QR, using queen presence as a fixed effect as well.
-	if (main=="queen"){
-		design <- model.matrix(~colony+queen_presence+stage,data=factors)
-	} else if (main=="stage"&&QP){
-		design <- model.matrix(~colony+stage+queen_presence,data=factors)
-	} else if (main=="stage"&&!QP){
-		design <- model.matrix(~colony+stage,data=factors)
-	} else if (main=="type"){
-		design <- model.matrix(~colony+type+stage,data=factors)
-	} else if (main=="interaction"){
-		design <- model.matrix(~colony+stage*queen_presence,data=factors)
-	}
-}
-
-####Calculate number of DE genes with stage labels permuted. Parallel processing is implemented
-PermuteStage <- function(code,coef,QP=TRUE,boots){
-	# Calculate the number of cores
-	no_cores <- detectCores() - 1
- 	print(code)
-	# Initiate cluster
-	cl <- makeCluster(no_cores)
-	clusterExport(cl = cl, varlist = c("DEmain","makeModel")) ##Must export these variables for parLapply to see them
-
-	# In parallel, permute #boots times and count # DE genes
-	bmat = parLapply(cl,1:boots,function(x) length(DEmain(code,"stage",coef,permute=TRUE,QP,trial=x)))
-	stopCluster(cl)
-	unlist(bmat)
-	return(bmat)
-}
-
-##Returns list of true DE genes
-# RH <- DEmain("R.*WH","stage",4:7,QP=FALSE) ##Random nurses; 4:7 is the coefficients, offset by number of colonies (3)
-# RG <- DEmain("R.*WG","stage",4:7,QP=FALSE)
-# LCH <- DEmain("LCH","stage",4:7,QP=FALSE) ##QL focal nurses 
-# LCG <- DEmain("LCG","stage",4:7,QP=FALSE)
-# LCH <- DEmain("[^1]LCH","stage",4:6,QP=FALSE) ##QL focal nurses with no first stage, to be more similar to sexual nurses
-# LCG <- DEmain("[^1]LCG","stage",4:6,QP=FALSE)
-# QCH <- DEmain("QCH","stage",4:7,QP=FALSE) ##QR focal nurses
-# QCG <- DEmain("QCG","stage",4:7,QP=FALSE) 
-# XH <- DEmain("XH.*WH","stage",4:6,QP=FALSE) ##Sexual Nurses; 4:6 is coefficients because don't have stage 1 individuals
-# XG <- DEmain("XG.*WG","stage",4:6,QP=FALSE)
-# SL <- DEmain("S.*_L","stage",4:6,QP=FALSE) ##Sexual Larvae
-LCH <- DEmain("[^1]LCH","stage",4:6,QP=FALSE) ##QL focal nurses with no first stage, to be more similar to sexual nurses
-LCG <- DEmain("[^1]LCG","stage",4:6,QP=FALSE)
-DEmain("[^1]QCH","stage",4:6,QP=FALSE)
-CH <- DEmain("CG","stage",4:7,QP=FALSE)
-XH5 <- DEmain("1LCH|XH","stage",4:7,QP=FALSE)
-XG5 <- DEmain("1LCG|XG","stage",4:7,QP=FALSE)
-
-NFL4 <- DEmain("[^1]LCH|([^1]LFH|[^1]FLH)","type",4,QP=FALSE)
-NFL <- DEmain("LCH|(LFH|FLH)","type",4,QP=FALSE)
-
-NFQ4 <- DEmain("[^1]QCH|([^1]QFH|[^1]FQH)","type",4,QP=FALSE)
-NFQ <- DEmain("QCH|(QFH|FQH)","type",4,QP=FALSE)
-
-
-# ##Returns number of DE genes by each permuation
-boots = 2
-RHp <- PermuteStage("R.*WH",4:7,QP=FALSE,boots) ##Random nurses; 4:7 is the coefficients, offset by number of colonies (3)
-RGp <- PermuteStage("R.*WG",4:7,QP=FALSE,boots)
-LCHp <- PermuteStage("LCH",4:7,QP=FALSE,boots) ##QL focal nurses 
-LCGp <- PermuteStage("LCG",4:7,QP=FALSE,boots)
-LCHp2 <- PermuteStage("[^1]LCH",4:6,QP=FALSE,boots) ##QL focal nurses with no first stage, to be more similar to sexual nurses
-LCGp2 <- PermuteStage("[^1]LCG",4:6,QP=FALSE,boots)
-QCHp <- PermuteStage("QCH",4:7,QP=FALSE,boots) ##QR focal nurses
-QCGp <- PermuteStage("QCG",4:7,QP=FALSE,boots) 
-XHp <- PermuteStage("XH.*WH",4:6,QP=FALSE,boots) ##Sexual Nurses; 4:6 is coefficients because don't have stage 1 individuals
-XGp <- PermuteStage("XG.*WG",4:6,QP=FALSE,boots)
-SLp <- PermuteStage("S.*_L",4:6,QP=FALSE,boots) ##Sexual Larvae
-
-save(RHp,RGp,LCHp,LCGp,LCHp2,LCGp2,QCHp,QCGp,XHp,XGp,SLp,file = "permutedDEresults.RData")
-
-TrueRes = EdgeR(counts,design,2)
-	BootRes = c()
-	for (i in 1:boots){
-		f = factors
-		f$queen_presence = sample(f$queen_presence,nrow(f),replace=F)
-		design <- model.matrix(~queen_presence+colony,data=f)
-		BootRes = c(BootRes,sum(EdgeR(counts,design,2)$FDR < 0.05))
-	}
-
+##Calculate number of DEs by queen presence at each stage
 QPStageDE <- function(code){
 	load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
 	counts <- counts[,grep(code,colnames(counts))]
@@ -181,74 +74,139 @@ FG = QPStageDE("F.*WG")
 W = QPStageDE("W.*_L")
 LP = QPStageDE("P.*_L")
 
+#########################
+###Correlation over time
+########################
 
-Stage1DE <- function(code){
+
+##Main function to calculate stage-by-stage correlations and make heatmap
+CorByStage <- function(code,name){
 	load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
 	counts <- counts[,grep(code,colnames(counts))]
+	fpkm <- fpkm[,grep(code,colnames(fpkm))]
 	factors <- droplevels(factors[grep(code,rownames(factors)),])
-	factors$BigStage = 2
-	factors$BigStage[factors$stage==1]=1
-	design <- model.matrix(~BigStage+colony,data=factors)
-	x <- EdgeR(counts,design,2)
-	return(x)
+	matCor <- CorMat(counts,fpkm,factors,Full=TRUE)
+	p = CorHeat(matCor,code,name)
+	return(list(matCor,p))
 }
 
-Stage1DEpermute <- function(code,boots){
-	load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
-	counts <- counts[,grep(code,colnames(counts))]
-	factors <- droplevels(factors[grep(code,rownames(factors)),])
-	factors$BigStage = 2
-	factors$BigStage[factors$stage==1]=1
-	L1f = factors[factors$BigStage==1,]
-	Lf = factors[factors$BigStage==2,]
-	res = list()
-	numDE = c()
-	propUp = c()
-	WeightedUp = c()
-	for (i in 1:boots){
-		f2 = Lf[sample(rownames(Lf),nrow(L1f),replace=FALSE),]
-		fac = rbind(L1f,f2)
-		c = counts[,colnames(counts) %in% rownames(fac)]
-		design <- model.matrix(~BigStage,data=fac)
-		x <- EdgeR(c,design,2)
-		res[[i]] = x
-		sig = x[x$FDR < 0.05,]
-		if (nrow(sig) > 0){
-			sig$Num = seq(1,nrow(sig))
-			numDE[i] = nrow(sig)
-			propUp[i] = sum(sig$logFC > 0)/nrow(sig)
-			WeightedUp[i] = sum(sig$Num[sig$logFC > 0])/sum(sig$Num)
-		} 
+##Make heatmap of stage-by-stage correlations
+CorHeat <- function(mat,code,name){
+	m = as.data.frame(mat)
+	colnames(m) = rownames(m) = c("L1","L2","L3","L4","L5")
+	m$StageX = factor(rownames(m),levels=colnames(m))
+	m1 = melt(m,id.vars="StageX")
+	p <- ggplot(m1,aes(variable,StageX))+
+		geom_tile(aes(fill=value))+
+		xlab("Stage")+ylab("Stage")+
+		scale_y_discrete(limits=rev(levels(m1$StageX)))+
+		ggtitle(name)
+	return(p)
+}
+
+##Make matrix of correlations
+CorMat <- function(counts,fpkm,factors,Full,code){
+	nStage = length(levels(factors$stage))
+	mat = matrix(nrow = nStage, ncol = nStage)
+	for (i in 1:nStage){
+		for (j in i:nStage){
+			i1 = 5 - nStage + i
+			j1 = 5 - nStage + j
+			if (Full){
+				datA = fpkm[,factors$stage==i]
+				datB = fpkm[,factors$stage==j]
+				mat[i,j] = sum(rowSums(as.data.frame(cor(datA,datB))))/(ncol(datA) * ncol(datB))
+			} else {
+				if (i == j){
+					mat[i,j] = 0
+				}  else {
+					mat[i,j] = numDE(counts,factors,i,j)
+				}
+			}
+		}
 	}
-	return(list(res,numDE,propUp,WeightedUp))
+	return(mat)
 }
 
 
-QCH1 = Stage1DE("QCH")
-QCG1 = Stage1DE("QCG")
-LCH1 = Stage1DE("LCH")
-LCG1 = Stage1DE("LCG")
-XH1 = Stage1DE("XH|1LCH")
-XG1 = Stage1DE("XG|1LCG")
+LW = CorByStage("LW")
+QW = CorByStage("QW")
+LS = CorByStage("LS|1LW")
+LFH = CorByStage("LFH|FLH")
+QFH = CorByStage("QFH|FQH") ##Not enough sampling..
+LFG = CorByStage("LFG|FLG")
+QFG = CorByStage("QFG|FQG")
+LCH = CorByStage("LCH")
+QCH = CorByStage("QCH")
+XH = CorByStage("XH|1LCH")
+LCG = CorByStage("LCG")
+QCG = CorByStage("QCG")
+XG = CorByStage("XG|1LCG")
+RH = CorByStage("RH")
+RG = CorByStage("RG")
 
-XHp = Stage1DEpermute("XH|1LCH",5)
+FH = CorByStage("F.*WH")
+FG = CorByStage("F.*WG")
+LCH2 = CorByStage("LCH")
+QCH2 = CorByStage("QCH")
+XH2 = CorByStage("XH|1LCH")
 
-XH1$gene = rownames(XH1)
-d = merge(XH1,annNames,by.x="gene",by.y="gene_id")
-d = d[d$FDR < 0.05,]
-d = d[order(d$FDR),]
-XH1$color = "black"
-XH1$color[XH1$logFC > 0 & XH1$FDR < 0.05] = "red"
-XH1$color[XH1$logFC < 0 & XH1$FDR < 0.05] = "blue"
-png("SampVolcano.png")
-ggplot(XH1,aes(logFC,-log(PValue)))+
-	geom_point(size=1,alpha=0.5,aes(color=color))+
-	scale_colour_manual(values=c("black","red","blue"))+
-	theme_bw()+
-	theme(legend.position="none")
+LW = CorByStage("LW","WorkerLarvae")
+LS = CorByStage("LS|1LW","SexualLarvae")
+LCH = CorByStage("LCH","QL WorkerNurseHead")
+XH = CorByStage("XH|1LCH","SexualNurseHead")
+LCG = CorByStage("LCG","QL WorkerNurseGaster")
+XG = CorByStage("XG|1LCG","SexualNurseGaster")
+QCH = CorByStage("QCH","QR WorkerNurseHead")
+QCG = CorByStage("QCG","QR WorkerNurseGaster")
+RH = CorByStage("RH","RandomNurseHead")
+RG = CorByStage("RG","RandomNurseGaster")
+
+
+adjN <- function(plot){
+	p <- plot + scale_fill_continuous(limits=c(0.825, 1), breaks=seq(0.825,1,by=0.025))
+	return(p)
+}
+
+adjL <- function(plot){
+	p <- plot + scale_fill_continuous(limits=c(0.2, 1), breaks=seq(0.2,1,by=0.1))
+	return(p)
+}
+
+png("AllHeats.png",width=3000,height=3000,res=300)
+grid.arrange(adjL(LW[[3]]),adjL(LS[[3]]),adjN(LCH[[3]]),adjN(LCG[[3]]),adjN(XH[[3]]),adjN(XG[[3]]),nrow=3,ncol=2)
 dev.off()
 
-expr = rowSums(fpkm[,grep("")]) 
+pdf("AllHeats.png")
+grid.arrange(LW[[3]],LS[[3]],LCH[[3]],LCG[[3]],XH[[3]],XG[[3]],nrow=3,ncol=2)
+dev.off()
+
+png("AllHeatsQR.png",width=3000,height=3000,res=300)
+grid.arrange(adjN(QCH[[3]]),adjN(QCG[[3]]),adjN(RH[[3]]),adjN(RG[[3]]),nrow=2,ncol=2)
+dev.off()
+
+CVbyStage <- function(code){
+	load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
+	fpkm <- fpkm[,grep(code,colnames(fpkm))]
+	factors <- droplevels(factors[grep(code,rownames(factors)),])
+	CV = c()
+	for (i in levels(factors$stage)){
+		s_d = sd(rowSums(fpkm[,factors$stage==i]))
+		m = mean(rowSums(fpkm[,factors$stage==i]))
+		CV = c(CV,s_d/m)
+	}
+	return(CV)
+}
+
+CLW = CVbyStage("LW")
+CLCG = CVbyStage("LCG")
+
+CLS = CVbyStage("LS")
+CLCH = CVbyStage("LCH")
+CXH = CVbyStage("XH|1LCH")
+CQCH = CVbyStage("QCH")
+
+
 #########################
 ###Part 2: Dominant Patterns
 #########################
@@ -412,185 +370,6 @@ GenePlots("SLarv","LS",SexG[[1]][[1]],4,title="shared with SNurseG")
 GenePlots("SNurseG","XG",SexG[[1]][[1]],4,title="shared with SLarv")
 GenePlots("SNurseG","X.*WG",1,4,title="mod1")
 
-g = STEMdata[["SNurseG"]][[1]]
-
-g = names(g)[g %in% 1]
-
-
-######
-##Will probably cut this section, as it doesn't add much..
-#####
-
-CorByStage <- function(code,name){
-	load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
-	counts <- counts[,grep(code,colnames(counts))]
-	fpkm <- fpkm[,grep(code,colnames(fpkm))]
-	factors <- droplevels(factors[grep(code,rownames(factors)),])
-	matCor <- CorMat(counts,fpkm,factors,Full=TRUE)
-	p = CorHeat(matCor,code,name)
-	matDE <- CorMat(counts,fpkm,factors,Full=FALSE)
-	return(list(matCor,matDE,p))
-}
-
-CorHeat <- function(mat,code,name){
-	m = as.data.frame(mat)
-	colnames(m) = rownames(m) = c("L1","L2","L3","L4","L5")
-	m$StageX = factor(rownames(m),levels=colnames(m))
-	m1 = melt(m,id.vars="StageX")
-	p <- ggplot(m1,aes(variable,StageX))+
-		geom_tile(aes(fill=value))+
-		xlab("Stage")+ylab("Stage")+
-		scale_y_discrete(limits=rev(levels(m1$StageX)))+
-		ggtitle(name)
-	return(p)
-}
-
-CorMat <- function(counts,fpkm,factors,Full,code){
-	nStage = length(levels(factors$stage))
-	mat = matrix(nrow = nStage, ncol = nStage)
-	for (i in 1:nStage){
-		for (j in i:nStage){
-			i1 = 5 - nStage + i
-			j1 = 5 - nStage + j
-			if (Full){
-				datA = fpkm[,factors$stage==i]
-				datB = fpkm[,factors$stage==j]
-				mat[i,j] = sum(rowSums(as.data.frame(cor(datA,datB))))/(ncol(datA) * ncol(datB))
-			} else {
-				if (i == j){
-					mat[i,j] = 0
-				}  else {
-					mat[i,j] = numDE(counts,factors,i,j)
-				}
-			}
-		}
-	}
-	return(mat)
-}
-
-numDE <- function(counts,factors,i,j){
-	counts = counts[,factors$stage==i|factors$stage==j]
-	factors = droplevels(factors[rownames(factors) %in% colnames(counts),])
-	design <- model.matrix(~stage,data=factors)
-	x = EdgeR(counts,design,2)
-	return(length(rownames(x)[x$FDR<0.05]))
-}
-
-LW = CorByStage("LW")
-QW = CorByStage("QW")
-LS = CorByStage("LS|1LW")
-LFH = CorByStage("LFH|FLH")
-QFH = CorByStage("QFH|FQH") ##Not enough sampling..
-LFG = CorByStage("LFG|FLG")
-QFG = CorByStage("QFG|FQG")
-LCH = CorByStage("LCH")
-QCH = CorByStage("QCH")
-XH = CorByStage("XH|1LCH")
-LCG = CorByStage("LCG")
-QCG = CorByStage("QCG")
-XG = CorByStage("XG|1LCG")
-RH = CorByStage("RH")
-RG = CorByStage("RG")
-
-FH = CorByStage("F.*WH")
-FG = CorByStage("F.*WG")
-LCH2 = CorByStage("LCH")
-QCH2 = CorByStage("QCH")
-XH2 = CorByStage("XH|1LCH")
-
-LW = CorByStage("LW","WorkerLarvae")
-LS = CorByStage("LS|1LW","SexualLarvae")
-LCH = CorByStage("LCH","QL WorkerNurseHead")
-XH = CorByStage("XH|1LCH","SexualNurseHead")
-LCG = CorByStage("LCG","QL WorkerNurseGaster")
-XG = CorByStage("XG|1LCG","SexualNurseGaster")
-QCH = CorByStage("QCH","QR WorkerNurseHead")
-QCG = CorByStage("QCG","QR WorkerNurseGaster")
-RH = CorByStage("RH","RandomNurseHead")
-RG = CorByStage("RG","RandomNurseGaster")
-
-
-adjN <- function(plot){
-	p <- plot + scale_fill_continuous(limits=c(0.825, 1), breaks=seq(0.825,1,by=0.025))
-	return(p)
-}
-
-adjL <- function(plot){
-	p <- plot + scale_fill_continuous(limits=c(0.2, 1), breaks=seq(0.2,1,by=0.1))
-	return(p)
-}
-
-png("AllHeats.png",width=3000,height=3000,res=300)
-grid.arrange(adjL(LW[[3]]),adjL(LS[[3]]),adjN(LCH[[3]]),adjN(LCG[[3]]),adjN(XH[[3]]),adjN(XG[[3]]),nrow=3,ncol=2)
-dev.off()
-
-pdf("AllHeats.png")
-grid.arrange(LW[[3]],LS[[3]],LCH[[3]],LCG[[3]],XH[[3]],XG[[3]],nrow=3,ncol=2)
-dev.off()
-
-png("AllHeatsQR.png",width=3000,height=3000,res=300)
-grid.arrange(adjN(QCH[[3]]),adjN(QCG[[3]]),adjN(RH[[3]]),adjN(RG[[3]]),nrow=2,ncol=2)
-dev.off()
-
-CVbyStage <- function(code){
-	load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
-	fpkm <- fpkm[,grep(code,colnames(fpkm))]
-	factors <- droplevels(factors[grep(code,rownames(factors)),])
-	CV = c()
-	for (i in levels(factors$stage)){
-		s_d = sd(rowSums(fpkm[,factors$stage==i]))
-		m = mean(rowSums(fpkm[,factors$stage==i]))
-		CV = c(CV,s_d/m)
-	}
-	return(CV)
-}
-
-CLW = CVbyStage("LW")
-CLCG = CVbyStage("LCG")
-
-CLS = CVbyStage("LS")
-CLCH = CVbyStage("LCH")
-CXH = CVbyStage("XH|1LCH")
-CQCH = CVbyStage("QCH")
-
-CorQP <- function(code){
-	load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
-	fpkm <- fpkm[,grep(code,colnames(fpkm))]
-	factors <- droplevels(factors[grep(code,rownames(factors)),])
-	mat <- c()
-	for (i in levels(factors$stage)){
-		datA = fpkm[,factors$queen_presence=="present" & factors$stage ==i]
-		datB = fpkm[,factors$queen_presence=="absent" & factors$stage ==i]
-		mat = c(mat,sum(rowSums(as.data.frame(cor(datA,datB))))/(ncol(datA) * ncol(datB)))
-	}
-	return(mat)
-}
-
-
-CorQP("F.*WH")
-CorQP("F.*WG")
-CorQP("C.*WH")
-CorQP("C.*WG")
-
-CorType <- function(code){
-	load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
-	fpkm <- fpkm[,grep(code,colnames(fpkm))]
-	factors <- droplevels(factors[grep(code,rownames(factors)),])
-	mat <- c()
-	for (i in levels(factors$stage)){
-		datA = fpkm[,factors$type=="X" & factors$stage ==i]
-		datB = fpkm[,factors$type=="C" & factors$stage ==i]
-		mat = c(mat,sum(rowSums(as.data.frame(cor(datA,datB))))/(ncol(datA) * ncol(datB)))
-	}
-	return(mat)
-}
-
-CorType("[^1]LCH|XH")
-CorType("[^1]LCG|XG")
-CorType("LS|[^1]LW")
-########
-##End probable cut
-#######
 
 ##################
 ##GRN analysis
