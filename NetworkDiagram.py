@@ -2,6 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math as m
 
+Genes = np.loadtxt("/Users/michaelwarner/MockGenes.txt",skiprows=1,dtype='string')
+Conns = np.loadtxt("/Users/michaelwarner/MockConnections.txt",skiprows=1,dtype='int')
+
 plt.figure(figsize=(6,6),facecolor='white')
 plt.subplot(111)
 
@@ -11,8 +14,6 @@ textOffset = 0.05
 r = 0.35
 center = [[0.5,0,1],[0.1,1,1]]
 colors = ["#000000", "#E69F00", "#56B4E9"]
-Genes = ["JH1","JH2","JH3","JH4","JH5","JH6"]
-Genes = [Genes,Genes,Genes]
 
 
 def Addcircles():
@@ -44,7 +45,7 @@ def Addnames ():
 def addLabels (Type):
 	P = CircleCoord (center[0][Type],center[1][Type])
 	for i in range(6):
-		plt.text(P[i][0],P[i][1]-textOffset,Genes[Type][i],
+		plt.text(P[i][0],P[i][1]-textOffset,Genes[i][Type],
 			fontsize=16,horizontalalignment='center',
 			verticalalignment='center',color="w")
 	return
