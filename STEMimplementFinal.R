@@ -594,18 +594,18 @@ boots=1000
 
 codes = c("W.*_L","C.*WH","C.*WG")
 names = c("WorkLarv","WorkNurseH","WorkNurseG")
-Wnets = MakeNets(codes,names,10)
+Wnets = MakeNets(codes,names,boots)
 genGraphs(Wnets,"Worker")
 
 codes = c("LS|1LW","XH|1LCH","XG|1LCG")
 names = c("SexLarv","SexNurseH","SexNurseG")
-Wnets = MakeNets(codes,names,10)
-genGraphs(Wnets,"Sexual")
+Snets = MakeNets(codes,names,boots)
+genGraphs(Snets,"Sexual")
 
 codes = c("QW","R.*WH","R.*WG")
 names = c("QRLarv","RandNurseH","RandNurseG")
-Wnets = MakeNets(codes,names,10)
-genGraphs(Wnets,"Random")
+Rnets = MakeNets(codes,names,boots)
+genGraphs(Rnets,"Random")
 
 
 
