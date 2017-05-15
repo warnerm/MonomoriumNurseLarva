@@ -54,6 +54,9 @@ Addcircles(); #Add circles for genes
 Addnames(); #Add gene names
 #Addlinks(); #Add arrows
 plt.axis('off')
+
+plt.arrow( 0.5, 0.8, 0.0, -0.2, fc="k", ec="k",
+head_width=0.05, head_length=0.1 )
 plt.show()
 
 
