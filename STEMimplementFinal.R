@@ -492,7 +492,7 @@ IterateGenie <- function(Ginput,boots){
 	i = 0
 	while (i <= boots){
 	  x <- try(GENIE3(as.matrix(Ginput))) #generates matrix of connection strength
-	  if (!inherits(x),"try-error"){
+	  if (!inherits(x,"try-error")){
 	    GenieOut[[i]] = x
 	    i = i+1
 	  }
@@ -516,10 +516,14 @@ IterateGenie <- function(Ginput,boots){
 #Calculate connection strengths between random genes for a number of mock networks. Return data from each mock network
 RandomNet <- function(input,boots,names){
 	SampleConns = list()
-	for (i in 1:boots){
+	i = 1
+	while (i <= boots){
 		Ginput <- genRandInput(input)
-		Gres <- GENIE3(as.matrix(Ginput))
-		SampleConns[[i]] = as.data.frame(getSampConns(Gres,names))
+		x <- try(GENIE3(as.matrix(Ginput)))
+		if (!inherits(x,"try-error")){
+		  SampleConns[[i]] = as.data.frame(getSampConns(x,names))
+		  i = i+1
+		}
 	}
 	SampleConns = ldply(SampleConns,data.frame)
 	return(SampleConns)
