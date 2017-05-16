@@ -291,8 +291,6 @@ QRWorkG4stage = SharedProfiles(STEMdata[["WLarvQR4"]],STEMdata[["FocNurseGQR4"]]
 SexH5 = SharedProfiles(STEMdata[["SexLarv5"]],STEMdata[["SexNurseH5"]],80)
 SexG5 = SharedProfiles(STEMdata[["SexLarv5"]],STEMdata[["SexNurseG5"]],80)
 
-
-
 CountsbyStage <- function(code,timepoints){
 	load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
 	counts <- counts[,grep(code,colnames(counts))]
