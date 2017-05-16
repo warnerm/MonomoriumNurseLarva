@@ -5,7 +5,11 @@ library(parallel)
 library(reshape2)
 library(ggplot2)
 library(gridExtra)
+library(GSEABase)
+library(GOstats)
+library(GSEABase)
 load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
+load("~/Dropbox/monomorium nurses/data.processed/GODB.RData")
 
 cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
@@ -327,6 +331,7 @@ GenePlots <- function(name,code,mods,timepoints,title=NULL){
 	p <- ggplot(SE,aes(x=Stage,y=Expression,color=profile,group=gene))+
 		geom_line(alpha=0.1)+
 		theme_bw()+
+	  ylim(-4,4)+
 		theme(text=element_text(size=16))+
 		scale_colour_manual(values=cbbPalette,name="Module")+
 		xlab("Larval Developmental Stage")+
@@ -364,9 +369,18 @@ png("AllSTEMplot.png",width=3000,height=3000,res=300)
 grid.arrange(a1,a3,a2,a4,nrow=2,ncol=2)
 dev.off()
 
-GenePlots("SLarv","LS",SexG[[1]][[1]],4,title="shared with SNurseG")
-GenePlots("SNurseG","XG",SexG[[1]][[1]],4,title="shared with SLarv")
-GenePlots("SNurseG","X.*WG",1,4,title="mod1")
+
+a1 = GenePlots("WLarv","W.*_L",NegMod(WorkH[[2]][[1]],80),5,"A")
+a2 = GenePlots("FocNurseH","CH",WorkH[[2]][[1]],5,"C")
+
+WGmods = WorkG[[1]][[1]][order(WorkG[[1]][[2]],decreasing=TRUE)]
+
+
+a3 = GenePlots("WLarv","W.*_L",WGmods[1:5],5,"B")
+a4 = GenePlots("FocNurseG","CG",WGmods[1:5],5,"D")
+png("AllSTEMplot.png",width=3000,height=3000,res=300)
+grid.arrange(a1,a3,a2,a4,nrow=2,ncol=2)
+dev.off()
 
 
 ##################
@@ -375,15 +389,12 @@ GenePlots("SNurseG","X.*WG",1,4,title="mod1")
 
 load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
 fpkm = log(fpkm + sqrt(fpkm ^ 2 + 1)) #hyperbolic sine transformation to normalize gene expression data
-
-candidates <- read.csv("~/Documents/Mpharaonis_orthologs.csv")
-candidateList <- candidates[grepl("LOC",candidates$Monomorium.contig),]
-
-setwd("~/Documents/GENIE3_R_C_wrapper")
-source("~/Documents/GENIE3_R_C_wrapper/GENIE3.R")
+candidateList <- read.csv("~/Dropbox/MonomoriumCandidateGenes.csv")
 
 #Make null and real networks of gene regulation occurring between and within groups of samples using genie 
 MakeNets <- function(codes,names,boots){
+  setwd("~/Downloads/GENIE3_R_C_wrapper")
+  source("~/Downloads/GENIE3_R_C_wrapper/GENIE3.R")
 	if (length(codes) != length(names)){
 		return("Codes and Names not same length")
 	}
@@ -403,7 +414,7 @@ GetExpr <- function(codes,names){
 	}
 	data = ldply(d,data.frame)
 	
-	annDat <- merge(data,candidateList,by.x="gene",by.y="Monomorium.contig",all.x=TRUE)
+	annDat <- merge(data,candidateList,by="gene",all.x=TRUE)
 	annDat$tissue_gene=with(annDat,paste(Samp,Common.Name,sep="_"))
 	return(annDat)
 }
@@ -533,10 +544,11 @@ getSampConns <- function(Gres,names){
 #plot figures for genie results
 genGraphs <- function(nets,name){
 	setwd("~/Dropbox/workspace/")
-	plotRandCand(nets[[1]],name)
-	plotSampStrengthsReal(nets[[2]],name,nets[[4]])
+	p1 <- plotRandCand(nets[[1]],name)
+	p2 <- plotSampStrengthsReal(nets[[2]],name,nets[[4]])
 	nets[[3]]$weight = as.numeric(as.character(nets[[3]]$weight))
-	plotSampStrength(nets[[3]],paste("RandNet",name))
+	p3 <- plotSampStrength(nets[[3]],paste("RandNet",name))
+	return(list(p1,p2,p3))
 }
 
 #Plot connection strengths of candidate-candidate, candidate-random, and random-random connections
@@ -550,14 +562,15 @@ plotRandCand <- function(net,name){
 
 	p <- ggplot(dat,aes(x=GenePair,y=MeanConnectionStrength))+
 		geom_boxplot(notch=TRUE)+
-			ylab("Relative Connection Strength")+
-			xlab("Connection Type")+
+			ylab("")+
+			xlab("")+
 			theme_bw()+
 			theme(text=element_text(size=10),
 				axis.title=element_text(size=15),
 				axis.title.x=element_text(margin = unit(c(0.75,0,0,0), "cm")),
 				axis.title.y=element_text(margin=unit(c(0,0.75,0,0), "cm")))
-	ggsave(plot=p,file=paste(name,"NullGenieConn.pdf",sep=""),height=11,width=9,dpi=300)
+	ggsave(plot=p,file=paste(name,"NullGenieConn.png",sep=""),height=11,width=9,dpi=300)
+  return(p)
 }
 
 #prepare candidate gene network results for plotting of connection strength based on target/regulatory samples
@@ -569,42 +582,46 @@ plotSampStrengthsReal <- function(net,name,SampNames){
 	links$RegulatorySamp = factor(links$RegulatorySamp,levels=SampNames)
 	links$weight = links$weight/max(links$weight)
 
-	plotSampStrength(links,paste(name,"CandGenes"))
+	p <- plotSampStrength(links,paste(name,"CandGenes"))
+  return(p)
 }
 
 #plot connection strength based on sample combinations
 plotSampStrength <- function(links,name){
 	levels(links$TargetSamp) = paste(levels(links$TargetSamp)," ")
+	links$weight = links$weight/max(links$weight)
 	p <- ggplot(links,aes(x=RegulatorySamp,y=weight,fill=TargetSamp))+
 		geom_boxplot(notch=TRUE)+
 		theme_bw()+
-		theme(text=element_text(size=18),axis.text.x=element_blank())+
+		theme(text=element_text(size=18),axis.text.x=element_text(size=16))+
 		scale_fill_manual(values=cbbPalette,name="Target Gene:  ")+
 		theme(legend.position="bottom",legend.text=element_text(size=18))+
 		theme(axis.text.y=element_text(size=16))+
 		ylab("")+
 		xlab("")
-	ggsave(plot=p,file=paste(name,"SampStrength.pdf",sep=""),height=11,width=9,dpi=300)
+	ggsave(plot=p,file=paste(name,"SampStrength.png",sep=""),height=11,width=9,dpi=300)
+  return(p)
 }
 
-CandGenes = c("Jhepox","Vg2","JHE1","ILP1","EGFR","IRS","InR1","JHEH1")
+CandGenes = c("transformer","Vg2","JHE1","ILP1","vasa","nanos","dsx","IRS","InR1","JHEH1")
 boots=1000
 
 codes = c("W.*_L","C.*WH","C.*WG")
 names = c("WorkLarv","WorkNurseH","WorkNurseG")
 Wnets = MakeNets(codes,names,boots)
-genGraphs(Wnets,"Worker")
+Wgraphs <- genGraphs(Wnets,"Worker")
 
 codes = c("LS|1LW","XH|1LCH","XG|1LCG")
 names = c("SexLarv","SexNurseH","SexNurseG")
 Snets = MakeNets(codes,names,boots)
-genGraphs(Snets,"Sexual")
+Sgraphs <- genGraphs(Snets,"Sexual")
 
 codes = c("QW","R.*WH","R.*WG")
 names = c("QRLarv","RandNurseH","RandNurseG")
 Rnets = MakeNets(codes,names,boots)
-genGraphs(Rnets,"Random")
+Rgraphs <- genGraphs(Rnets,"Random")
 
+save(Wnets,Rnets,Snets,file="GenieNetsStats.RData")
 
 
 
