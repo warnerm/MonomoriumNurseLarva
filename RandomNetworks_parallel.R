@@ -3,40 +3,38 @@
 ##And then tabulates connection strength between chosen genes across all networks
 
 library(parallel)
+library(plyr)
 
 
 load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
 fpkm = log(fpkm + sqrt(fpkm ^ 2 + 1)) #hyperbolic sine transformation to normalize gene expression data
 
 #Create many random networks for a given sample set
-RandomNetworks <- function(codes,names,boots,nGene){
-  input <- GetExpr(codes,names)
-  resList <- parallelGenie(codes,names,boots,nGene,input)
-  # connStrength <- tabulateResList(resList)
-  # return(connStrength)
+RandomNetworks <- function(name){
+  file <- parallelGenie(name)
+  return(return)
 }
 
 #Parallel wrapper for genie function
-parallelGenie <- function(codes,names,boots,nGene,input){
+parallelGenie <- function(name){
   nReps = floor(boots/bootsPerCore)
   no_cores <- detectCores() - 1
   
   # Initiate cluster
   cl <- makeCluster(no_cores)
-  clusterExport(cl = cl, 
+  clusterExport(cl = cl,
                 varlist = c(
-                  "codes","names","boots","nGene",
-                  "input","runGenie","bootsPerCore")) ##Must export these variables for parLapply to see them
+                  "codes","names","boots","nGene","input","runGenie","bootsPerCore")) ##Must export these variables for parLapply to see them
   
   # In parallel, go through all permutations
-  AllResults = parLapply(cl,1:nReps,function(k) runGenie(codes,names,nGene,input,k))
+  AllResults = parLapply(cl,1:nReps,function(k) runGenie(k))
   stopCluster(cl)
   return(AllResults)
 }
 
 #Run bootsPerCore number of Genie runs on each thread
 #This is better than full parallelization so we can deal with the try error
-runGenie <- function(codes,names,nGene,input,run){
+runGenie <- function(run){
   Results = list()
   setwd("~/Downloads/GENIE3_R_C_wrapper")
   source("~/Downloads/GENIE3_R_C_wrapper/GENIE3.R")
@@ -54,15 +52,6 @@ runGenie <- function(codes,names,nGene,input,run){
   }
   Results = ldply(Results)
   return(Results)
-}
-
-#Take results of many runs and tabulate them
-tabulateResList <- function(resList){
-  res <- ldply(resList,data.frame)
-  d <- ddply(res,c("target.gene","regulatory.gene"),
-             Conn = mean(weight))
-  d = d[order(d$weight,decreasing=TRUE),]
-  return(d)
 }
 
 #Get expression over time for given set of samples; label genes by their sample association
@@ -93,16 +82,16 @@ ExprTime <- function(code,name){
 }
 
 boots = 1000000
-nGene = 10
-bootsPerCore = 100
+nGene = 100
+bootsPerCore = 2
 codes = c("W.*_L","C.*WH","C.*WG")
 names = c("WorkLarv","WorkNurseH","WorkNurseG")
-Wconns = RandomNetworks(codes,names,boots,nGene)
-save(Wconns,file="WconnsParallel.RData")
-
+input <- GetExpr(codes,names)
+file = RandomNetworks("Worker")
+save(file,file="WorkerGenieParallel.RData")
 
 codes = c("LS|1LW","XH|1LCH","XG|1LCG")
 names = c("SexLarv","SexNurseH","SexNurseG")
-Sconns = RandomNetworks(codes,names,boots,nGene)
-save(Sconns,file="SconnsParallel.RData")
+file = RandomNetworks("Sexual")
+save(file,file="SexualGenieParallel.RData")
 
