@@ -437,9 +437,14 @@ ExprTime <- function(code,fpkm,name){
 #Calculate connection strengths between candidates and random genes for a number of mock networks
 NullNetwork <- function(input,boots){
 	Rdata = matrix(nrow=boots,ncol=6)
-	for (i in 1:boots){
+	i=1
+	while (i <= boots){
 		Ginput = GenNullExpr(input)
-		Rdata[i,] = CalcConnsNull(Ginput)
+		x <- try(GENIE3(as.matrix(Ginput)))
+		if (!inherits(x,"try-error")){
+		  Rdata[i,] = CalcConnsNull(get.link.list(x))
+		  i = i+1
+		}
 	}
 	colnames(Rdata)=c("ConnCand","ConnRand","ConnBetween","RankCand","RankRand","RankBetween")
 	return(as.data.frame(Rdata))
@@ -459,10 +464,8 @@ GenNullExpr <- function(input){
 }
 
 #Calculates mean connection strength and median rank of connection strength of connections between candidates, between candidate-random, and between random genes
-CalcConnsNull <- function(Ginput){
+CalcConnsNull <- function(links){
 	Rdata = c()
-	a = GENIE3(as.matrix(Ginput))
-	links <- get.link.list(GENIE3(as.matrix(Ginput))) #Orders by strongest connections
 	links$rank = as.numeric(rownames(links))
 	links = links[gsub("_.*","",links$target.gene)==gsub("_.*","",links$regulatory.gene),] ##Sorts for connections within a sample type
 	Rdata[1] = mean(links$weight[!grepl("NA",links$regulatory.gene)&!grepl("NA",links$target.gene)])
@@ -486,8 +489,13 @@ RealNet <- function(input,boots){
 #Run genie boots # of times, calculate average connection strength of each connection
 IterateGenie <- function(Ginput,boots){
 	GenieOut <- list()
-	for (i in 1:boots){
-		GenieOut[[i]] <- GENIE3(as.matrix(Ginput)) #generates matrix of connection strength
+	i = 0
+	while (i <= boots){
+	  x <- try(GENIE3(as.matrix(Ginput))) #generates matrix of connection strength
+	  if (!inherits(x),"try-error"){
+	    GenieOut[[i]] = x
+	    i = i+1
+	  }
 	}
 
 	MeanConns = GenieOut[[1]]
