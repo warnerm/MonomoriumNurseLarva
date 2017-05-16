@@ -489,7 +489,7 @@ RealNet <- function(input,boots){
 #Run genie boots # of times, calculate average connection strength of each connection
 IterateGenie <- function(Ginput,boots){
 	GenieOut <- list()
-	i = 0
+	i = 1
 	while (i <= boots){
 	  x <- try(GENIE3(as.matrix(Ginput))) #generates matrix of connection strength
 	  if (!inherits(x,"try-error")){
