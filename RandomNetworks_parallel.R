@@ -2,22 +2,18 @@
 ##this file produces many networks with a randomly chosen set of genes
 ##And then tabulates connection strength between chosen genes across all networks
 
-library(plyr)
 library(parallel)
 
 
 load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
 fpkm = log(fpkm + sqrt(fpkm ^ 2 + 1)) #hyperbolic sine transformation to normalize gene expression data
 
-setwd("~/Downloads/GENIE3_R_C_wrapper")
-source("~/Downloads/GENIE3_R_C_wrapper/GENIE3.R")
-
 #Create many random networks for a given sample set
 RandomNetworks <- function(codes,names,boots,nGene){
   input <- GetExpr(codes,names)
   resList <- parallelGenie(codes,names,boots,nGene,input)
-  connStrength <- tabulateResList(resList)
-  return(connStrength)
+  # connStrength <- tabulateResList(resList)
+  # return(connStrength)
 }
 
 #Parallel wrapper for genie function
@@ -33,18 +29,20 @@ parallelGenie <- function(codes,names,boots,nGene,input){
                   "input","runGenie","bootsPerCore")) ##Must export these variables for parLapply to see them
   
   # In parallel, go through all permutations
-  AllResults = parLapply(cl,1:nReps,function(k) runGenie(codes,names,nGene,input))
+  AllResults = parLapply(cl,1:nReps,function(k) runGenie(codes,names,nGene,input,k))
   stopCluster(cl)
   return(AllResults)
 }
 
 #Run bootsPerCore number of Genie runs on each thread
 #This is better than full parallelization so we can deal with the try error
-runGenie <- function(codes,names,nGene,input){
+runGenie <- function(codes,names,nGene,input,run){
   Results = list()
+  setwd("~/Downloads/GENIE3_R_C_wrapper")
+  source("~/Downloads/GENIE3_R_C_wrapper/GENIE3.R")
+  library(plyr)
   i = 1
   while (i <= bootsPerCore){
-    print(i)
     Genes = sample(unique(input$gene),nGene,replace=F) #Pick random genes
     Ginput = input[input$gene %in% Genes,] #Get random gene expression data
     rownames(Ginput) = Ginput$tissue_gene
@@ -94,13 +92,17 @@ ExprTime <- function(code,name){
   return(expr)
 }
 
-boots = 10
+boots = 1000000
 nGene = 10
-bootsPerCore = 2
+bootsPerCore = 100
 codes = c("W.*_L","C.*WH","C.*WG")
 names = c("WorkLarv","WorkNurseH","WorkNurseG")
 Wconns = RandomNetworks(codes,names,boots,nGene)
+save(Wconns,file="WconnsParallel.RData")
+
 
 codes = c("LS|1LW","XH|1LCH","XG|1LCG")
 names = c("SexLarv","SexNurseH","SexNurseG")
 Sconns = RandomNetworks(codes,names,boots,nGene)
+save(Sconns,file="SconnsParallel.RData")
+
