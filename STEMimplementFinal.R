@@ -5,6 +5,7 @@ library(parallel)
 library(reshape2)
 library(ggplot2)
 library(gridExtra)
+require(grid)
 library(GSEABase)
 library(GOstats)
 library(GSEABase)
@@ -565,19 +566,22 @@ genGraphs <- function(nets,name){
 
 #Plot connection strengths of candidate-candidate, candidate-random, and random-random connections
 plotRandCand <- function(net,name){
-	dat = data.frame(GenePair=c(rep("Candidate-Candidate",boots),rep("Candidate-Random",boots),rep("Random-Random",boots)),
-		MeanConnectionStrength=c(net$ConnCand,net$ConnBetween,net$ConnRand))
-	dat$GenePair=as.factor(dat$GenePair)
-	dat$MeanConnectionStrength=dat$MeanConnectionStrength/max(dat$MeanConnectionStrength)
-	dat$id=rep(1:boots,times=3)
-	dt = dcast(data=dat,formula = id~GenePair,value.var="MeanConnectionStrength")
+  net$id = rownames(net)
+  d = melt(net[,c(1:3,7)],id.vars="id")
+  levels(d$variable) = c("Candidate-\nCandidate",
+                "Random-\nRandom",
+                "Candidate-\nRandom")
+  d$variable = factor(d$variable,levels = c("Candidate-\nCandidate",
+                                            "Candidate-\nRandom",
+                                            "Random-\nRandom"))
 
-	p <- ggplot(dat,aes(x=GenePair,y=MeanConnectionStrength))+
+  d$value = d$value/max(d$value)
+	p <- ggplot(d,aes(x=variable,y=value))+
 		geom_boxplot(notch=TRUE)+
 			ylab("")+
 			xlab("")+
 			theme_bw()+
-			theme(text=element_text(size=10),
+			theme(text=element_text(size=20),
 				axis.title=element_text(size=15),
 				axis.title.x=element_text(margin = unit(c(0.75,0,0,0), "cm")),
 				axis.title.y=element_text(margin=unit(c(0,0.75,0,0), "cm")))
@@ -634,10 +638,54 @@ Rnets = MakeNets(codes,names,boots)
 Rgraphs <- genGraphs(Rnets,"Random")
 
 save(Wnets,Rnets,Snets,file="GenieNetsStats.RData")
+p1 = Wgraphs[[1]] + annotate("text",x = 0.75,y=0.95,label="A",size=15)
+p2 = Sgraphs[[1]] + annotate("text",x = 0.75,y=0.95,label="B",size=15)
+
+png("CandRandStrengths.png",width=3000,height=3000,res=300)
+grid.arrange(p1,p2,nrow=1,ncol=2,
+             left = textGrob("Relative Connection Strength",gp=gpar(fontsize=25),rot=90,vjust=2),
+             bottom=textGrob("Connection Type",gp=gpar(fontsize=25),vjust=-1))
+dev.off()
+
+library(qgraph)
+GRNimage <- function(links,name){
+  links$regulatory.gene = gsub("_","\n",links$regulatory.gene)
+  links$target.gene = gsub("_","\n",links$target.gene)
+  links$regulatory.gene = gsub("transformer","tra",links$regulatory.gene)
+  links$target.gene = gsub("transformer","tra",links$target.gene)
+  links$color="#000000"
+  links$color[grepl("NG",links$regulatory.gene)]="#56B4E9"
+  links$color[grepl("NH",links$regulatory.gene)]="#E69F00"
+  links=links[1:30,]
+  linkM = links
+  colnames(linkM) = c("from","to","weights","color")
+  linkM = as.matrix(linkM)
+  posGenes = c(linkM[,1],linkM[,2])
+  geneN = posGenes[!duplicated(posGenes)]
+  groups = list(NH=seq(1,length(geneN))[grepl("NH",geneN)],
+                NG=seq(1,length(geneN))[grepl("NG",geneN)],
+                L=seq(1,length(geneN))[!grepl("NG",geneN) & !grepl("NH",geneN)])
+  
+  png(paste(name,"RealNet.png"),height=3000,width=3000,res=300)
+  a=qgraph(linkM[,c(1:3)],groups=groups,layout="circular",
+           color=c("#E69F00", "#56B4E9","#000000"),edge.color=linkM[,4],
+           labels=geneN,label.cex=1,legend=FALSE,shape="circle")
+  dev.off()
+}
 
 
-
-
+Wlist <- get.link.list(Wnets[[2]])
+Wlist$regulatory.gene = gsub("WorkNurse","N",Wlist$regulatory.gene)
+Wlist$target.gene = gsub("WorkNurse","N",Wlist$target.gene)
+Wlist$regulatory.gene = gsub("WorkLarv","WL",Wlist$regulatory.gene)
+Wlist$target.gene = gsub("WorkLarv","WL",Wlist$target.gene)
+GRNimage(Wlist,"Worker")
+Slist <- get.link.list(Snets[[2]])
+Slist$regulatory.gene = gsub("SexNurse","N",Slist$regulatory.gene)
+Slist$target.gene = gsub("SexNurse","N",Slist$target.gene)
+Slist$regulatory.gene = gsub("SexLarv","SL",Slist$regulatory.gene)
+Slist$target.gene = gsub("SexLarv","SL",Slist$target.gene)
+GRNimage(Slist,"Sexual")
 
 
 
