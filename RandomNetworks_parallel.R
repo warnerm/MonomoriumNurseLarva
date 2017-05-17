@@ -4,6 +4,7 @@
 
 library(parallel)
 library(plyr)
+library(snow)
 
 
 load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
@@ -12,8 +13,17 @@ fpkm = log(fpkm + sqrt(fpkm ^ 2 + 1)) #hyperbolic sine transformation to normali
 #Create many random networks for a given sample set
 RandomNetworks <- function(name){
   file <- parallelGenie(name)
-  return(return)
+  return(file)
 }
+
+summarize <- function(lst) {
+  lapply(lst, function(elt) {
+    if (elt$status=="ok") elt$value
+    else NA
+  })
+}
+
+
 
 #Parallel wrapper for genie function
 parallelGenie <- function(name){
@@ -22,14 +32,15 @@ parallelGenie <- function(name){
   
   # Initiate cluster
   cl <- makeCluster(no_cores)
-  clusterExport(cl = cl,
-                varlist = c(
+  clusterExport(cl = cl, c(
                   "codes","names","boots","nGene","input","runGenie","bootsPerCore")) ##Must export these variables for parLapply to see them
   
   # In parallel, go through all permutations
-  AllResults = parLapply(cl,1:nReps,function(k) runGenie(k))
+  Results <- parLapply(cl,1:nReps, function(k) {
+    runGenie(k)
+  })
   stopCluster(cl)
-  return(AllResults)
+  return(Results)
 }
 
 #Run bootsPerCore number of Genie runs on each thread
@@ -82,16 +93,16 @@ ExprTime <- function(code,name){
 }
 
 boots = 1000000
-nGene = 100
-bootsPerCore = 2
+nGene = 10
+bootsPerCore = 10
 codes = c("W.*_L","C.*WH","C.*WG")
 names = c("WorkLarv","WorkNurseH","WorkNurseG")
 input <- GetExpr(codes,names)
-file = RandomNetworks("Worker")
-save(file,file="WorkerGenieParallel.RData")
+worker = RandomNetworks("Worker")
+save(worker,file="WorkerGenieParallel.RData")
 
 codes = c("LS|1LW","XH|1LCH","XG|1LCG")
 names = c("SexLarv","SexNurseH","SexNurseG")
-file = RandomNetworks("Sexual")
-save(file,file="SexualGenieParallel.RData")
+sexual = RandomNetworks("Sexual")
+save(sexual,file="SexualGenieParallel.RData")
 
