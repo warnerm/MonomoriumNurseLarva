@@ -687,12 +687,62 @@ Slist$regulatory.gene = gsub("SexLarv","SL",Slist$regulatory.gene)
 Slist$target.gene = gsub("SexLarv","SL",Slist$target.gene)
 GRNimage(Slist,"Sexual")
 
+#Construct network with only larval genes, across all larval samples. 
+LarvalNet <- function(genes,boots){
+  data <- genLarvalData(genes)
+  networks <- genLarvalNetworks(boots,data)
+  summarisedRes <- summariseNets(networks,genes)
+  return(list(summarisedRes,networks))
+}
 
+genLarvalData <- function(genes){
+  d <- fpkm
+  d$gene = rownames(fpkm)
+  annDat <- merge(d,candidateList[,c(1,2)],by="gene",all.x=TRUE)
+  d <- annDat[annDat$Common.Name %in% genes,]
+  rownames(d) = d$Common.Name
+  d = d[,-c(1,221)]
+  d = d[,grepl("LS|W.*_L",colnames(d))]
+  return(d)
+}
 
+genLarvalNetworks <- function(boots,data){
+  setwd("~/Downloads/GENIE3_R_C_wrapper")
+  source("~/Downloads/GENIE3_R_C_wrapper/GENIE3.R")
+  results <- list()
+  i = 1
+  while (i <= boots){
+    d = data[,sample(colnames(data),(ncol(data) - 1),replace=FALSE)] #randomly drop 1 sample
+    x <- try(GENIE3(as.matrix(d)))
+    if (!inherits(x,"try-error")){
+      results[[i]] = x
+      i = i+1
+    }
+  }
+  return(results)
+}
 
+summariseNets <- function(nets,genes){
+  nGene = nrow(nets[[1]])
+  df <- data.frame(Regulatory.gene = rep(rownames(nets[[1]]),each=nGene),Target.gene=rep(rownames(nets[[1]]),each=nGene))
+  df$weight = df$c1 = df$c2 = 0.5
+  for (i in 1:nGene){
+    for (j in 1:nGene){
+      weights = sapply(1:length(nets),function(k) nets[[k]][j,i]) #returns vector of weights across all runs. j is regulatory gene (rows in Genie output)
+      index = (j-1)*nGene + i
+      df$weight[index] = mean(weights)
+      df$c1[index] = quantile(weights,0.025)
+      df$c2[index] = quantile(weights,0.975)
+      df$Target.gene[index] = rownames(nets[[1]])[i]
+    }
+  }
+  return(df)
+}
 
+CandGenes = c("transformer","Vg2","JHE1","ILP1","vasa","nanos","dsx","IRS","InR1","JHEH1")
+boots=1000
 
-
+Lres <- LarvalNet(CandGenes,boots)
 
 
 
