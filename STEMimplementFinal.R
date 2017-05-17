@@ -744,7 +744,7 @@ boots=1000
 
 Lres <- LarvalNet(CandGenes,boots)
 
-
+sortedLarvaConns <- Lres[[1]][order(Lres[[1]]$weight,decreasing=TRUE),]
 
 
 
