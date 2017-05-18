@@ -744,10 +744,23 @@ boots=1000
 
 Lres <- LarvalNet(CandGenes,boots)
 
-sortedLarvaConns <- Lres[[1]][order(Lres[[1]]$weight,decreasing=TRUE),]
+sortedLarvaConns <- Lres[[1]][order(Lres[[1]]$weight,decreasing=TRUE),c(1,2,5,4,3)]
+write.csv(sortedLarvaConns,file="LarvalNetworkConnections.csv")
 
+links = sortedLarvaConns
+links$Regulatory.gene = gsub("transformer","tra",links$Regulatory.gene)
+links$Target.gene = gsub("transformer","tra",links$Target.gene)
+links=links[1:13,]
+linkM = links[,c(1:3)]
+colnames(linkM) = c("from","to","weights")
+linkM = as.matrix(linkM)
+posGenes = c(linkM[,1],linkM[,2])
+geneN = posGenes[!duplicated(posGenes)]
 
-
+png("RealNetLarva.png",height=3000,width=3000,res=300)
+a=qgraph(linkM[,c(1:3)],layout="circular",
+         labels=geneN,label.cex=1,legend=FALSE,shape="circle")
+dev.off()
 
 
 
