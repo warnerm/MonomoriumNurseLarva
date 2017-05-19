@@ -4,7 +4,6 @@
 
 library(parallel)
 library(plyr)
-library(snow)
 
 
 load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
@@ -29,11 +28,13 @@ summarize <- function(lst) {
 parallelGenie <- function(name){
   nReps = floor(boots/bootsPerCore)
   no_cores <- detectCores() - 1
-  
+  if (no_cores > 32){
+    no_cores = 32
+  }
   # Initiate cluster
   cl <- makeCluster(no_cores)
   clusterExport(cl = cl, c(
-                  "codes","names","boots","nGene","input","runGenie","bootsPerCore")) ##Must export these variables for parLapply to see them
+                  "boots","nGene","input","runGenie","bootsPerCore")) ##Must export these variables for parLapply to see them
   
   # In parallel, go through all permutations
   Results <- parLapply(cl,1:nReps, function(k) {
@@ -52,10 +53,9 @@ runGenie <- function(run){
   library(plyr)
   i = 1
   while (i <= bootsPerCore){
-    Genes = sample(unique(input$gene),nGene,replace=F) #Pick random genes
-    Ginput = input[input$gene %in% Genes,] #Get random gene expression data
-    rownames(Ginput) = Ginput$tissue_gene
-    x <- try(GENIE3(as.matrix(Ginput[,c(1:5)])))
+    Genes = sample(rownames(input),nGene,replace=F) #Pick random genes
+    Ginput = input[rownames(input) %in% Genes,] #Get random gene expression data
+    x <- try(GENIE3(as.matrix(Ginput)))
     if (!inherits(x,"try-error")){ #Sometimes the data get weird, just try again!
       Results[[i]] = get.link.list(x)
       i = i+1
@@ -65,44 +65,23 @@ runGenie <- function(run){
   return(Results)
 }
 
-#Get expression over time for given set of samples; label genes by their sample association
-GetExpr <- function(codes,names){
-  d = list()
-  for (i in 1:length(codes)){
-    d[[i]] = ExprTime(codes[i],names[i])
-  }
-  data = ldply(d,data.frame)
-  
-  data$tissue_gene=with(data,paste(Samp,gene,sep="_"))
-  return(data)
-}
-
-#Gets expression over time for a given sample
-ExprTime <- function(code,name){
-  expr = matrix(nrow=nrow(fpkm))
-  for (i in 1:5){
-    e=rowSums(fpkm[,grepl(code,colnames(fpkm)) & factors$stage %in% i])/ncol(fpkm[,grepl(code,colnames(fpkm)) & factors$stage %in% i])
-    expr=cbind(expr,e)
-  }
-  expr = expr[,-c(1)]
-  colnames(expr)=paste("Samp",seq(1,5,by=1),sep="")
-  expr = as.data.frame(expr)
-  expr$Samp = rep(name,nrow(expr))
-  expr$gene=rownames(fpkm)
-  return(expr)
-}
-
 boots = 100000
 nGene = 10
 bootsPerCore = 1000
-codes = c("W.*_L","C.*WH","C.*WG")
-names = c("WorkLarv","WorkNurseH","WorkNurseG")
-input <- GetExpr(codes,names)
-worker = RandomNetworks("Worker")
-save(worker,file="WorkerGenieParallel.RData")
+d <- fpkm
+input = d[,grepl("LS|W.*_L",colnames(d))]
+rownames(input) = rownames(fpkm)
+larva = RandomNetworks("Larva")
+save(larva,file="LarvaGenieParallel.RData")
 
-codes = c("LS|1LW","XH|1LCH","XG|1LCG")
-names = c("SexLarv","SexNurseH","SexNurseG")
-sexual = RandomNetworks("Sexual")
-save(sexual,file="SexualGenieParallel.RData")
+# codes = c("W.*_L","C.*WH","C.*WG")
+# names = c("WorkLarv","WorkNurseH","WorkNurseG")
+# input <- GetExpr(codes,names)
+# worker = RandomNetworks("Worker")
+# save(worker,file="WorkerGenieParallel.RData")
+# 
+# codes = c("LS|1LW","XH|1LCH","XG|1LCG")
+# names = c("SexLarv","SexNurseH","SexNurseG")
+# sexual = RandomNetworks("Sexual")
+# save(sexual,file="SexualGenieParallel.RData")
 
