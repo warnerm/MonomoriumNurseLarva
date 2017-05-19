@@ -92,9 +92,9 @@ ExprTime <- function(code,name){
   return(expr)
 }
 
-boots = 1000000
+boots = 100000
 nGene = 10
-bootsPerCore = 10
+bootsPerCore = 1000
 codes = c("W.*_L","C.*WH","C.*WG")
 names = c("WorkLarv","WorkNurseH","WorkNurseG")
 input <- GetExpr(codes,names)
