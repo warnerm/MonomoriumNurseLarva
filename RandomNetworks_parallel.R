@@ -11,8 +11,8 @@ fpkm = log(fpkm + sqrt(fpkm ^ 2 + 1)) #hyperbolic sine transformation to normali
 
 #Create many random networks for a given sample set
 RandomNetworks <- function(){
-  file <- parallelGenie()
-  return(file)
+  parallelGenie()
+  return()
 }
 
 
@@ -53,7 +53,7 @@ runGenie <- function(run){
     }
   }
   Results = ldply(Results)
-  save(Results,file=paste("~/Results/",run,name,"GenieParallel.RData"))
+  save(Results,file=paste("~/Results/",name,run,"GenieParallel.RData",sep=""))
   return()
 }
 
@@ -67,8 +67,7 @@ d <- fpkm
 input = d[,grepl("LS|W.*_L",colnames(d))]
 rownames(input) = rownames(fpkm)
 name = "Larva"
-runGenie(1)
-#RandomNetworks()
+RandomNetworks()
 
 # codes = c("W.*_L","C.*WH","C.*WG")
 # names = c("WorkLarv","WorkNurseH","WorkNurseG")
