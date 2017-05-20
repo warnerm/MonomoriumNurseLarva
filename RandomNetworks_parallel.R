@@ -53,7 +53,7 @@ runGenie <- function(run){
     }
   }
   Results = ldply(Results)
-  save(Results,file=paste(run,name,"~/Results/GenieParallel.RData"))
+  save(Results,file=paste("~/Results/",run,name,"GenieParallel.RData"))
   return()
 }
 
