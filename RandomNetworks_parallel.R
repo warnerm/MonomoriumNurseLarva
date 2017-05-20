@@ -6,7 +6,7 @@ library(parallel)
 library(plyr)
 
 
-load("cleandata.RData")
+load("~/cleandata.RData")
 fpkm = log(fpkm + sqrt(fpkm ^ 2 + 1)) #hyperbolic sine transformation to normalize gene expression data
 
 #Create many random networks for a given sample set
