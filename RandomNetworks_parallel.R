@@ -67,7 +67,7 @@ d <- fpkm
 input = d[,grepl("LS|W.*_L",colnames(d))]
 rownames(input) = rownames(fpkm)
 name = "Larva"
-runGenie()
+runGenie(1)
 #RandomNetworks()
 
 # codes = c("W.*_L","C.*WH","C.*WG")
