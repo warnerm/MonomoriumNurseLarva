@@ -57,6 +57,7 @@ runGenie <- function(run){
   return()
 }
 
+setwd("~/GENIE3_R_C_wrapper")
 source("~/GENIE3_R_C_wrapper/GENIE3.R")
 
 boots = 10
