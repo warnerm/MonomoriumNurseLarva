@@ -19,29 +19,28 @@ RandomNetworks <- function(name){
 
 
 #Parallel wrapper for genie function
-parallelGenie <- function(name){
+parallelGenie <- function(){
   nReps = floor(boots/bootsPerCore)
  
   # Initiate cluster; this only works on linux
-  cl <- makePSOCKcluster(24,
+  cl <- makePSOCKcluster(40,
                          master=system("hostname -i", intern=TRUE))
   
   clusterExport(cl = cl, c(
-                  "runGenie","nGene","input","runGenie","bootsPerCore")) ##Must export these variables for parLapply to see them
+                  "name","nGene","input","runGenie","bootsPerCore")) ##Must export these variables for parLapply to see them
   
   # In parallel, go through all permutations
-  system.time(Results <- parLapply(cl,1:nReps, function(k) {
+  parLapply(cl,1:nReps, function(k) {
     runGenie(k)
-  }))
+  })
   stopCluster(cl)
-  return(Results)
+  return()
 }
 
 #Run bootsPerCore number of Genie runs on each thread
 #This is better than full parallelization so we can deal with the try error
 runGenie <- function(run){
   Results = list()
-  source("GENIE3.R")
   library(plyr)
   i = 1
   while (i <= bootsPerCore){
@@ -54,22 +53,21 @@ runGenie <- function(run){
     }
   }
   Results = ldply(Results)
-  return(Results)
+  save(Results,file=paste(run,name,"GenieParallel.RData"))
+  return()
 }
 
 setwd("GENIE3_R_C_wrapper")
 source("GENIE3.R")
 
-boots = 500000
+boots = 1000000
 nGene = 10
-bootsPerCore = 10
+bootsPerCore = 1000
 d <- fpkm
 input = d[,grepl("LS|W.*_L",colnames(d))]
 rownames(input) = rownames(fpkm)
-larva = RandomNetworks("Larva")
-save(larva,file="LarvaGenieParallel1.RData")
-larva2 = RandomNetworks("Larva")
-save(larva2,file="LarvaGenieParallel2.RData")
+name = "Larva"
+RandomNetworks("Larva")
 
 # codes = c("W.*_L","C.*WH","C.*WG")
 # names = c("WorkLarv","WorkNurseH","WorkNurseG")
