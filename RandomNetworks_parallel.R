@@ -10,8 +10,8 @@ load("cleandata.RData")
 fpkm = log(fpkm + sqrt(fpkm ^ 2 + 1)) #hyperbolic sine transformation to normalize gene expression data
 
 #Create many random networks for a given sample set
-RandomNetworks <- function(name){
-  file <- parallelGenie(name)
+RandomNetworks <- function(){
+  file <- parallelGenie()
   return(file)
 }
 
@@ -53,21 +53,21 @@ runGenie <- function(run){
     }
   }
   Results = ldply(Results)
-  save(Results,file=paste(run,name,"GenieParallel.RData"))
+  save(Results,file=paste(run,name,"~/Results/GenieParallel.RData"))
   return()
 }
 
-setwd("GENIE3_R_C_wrapper")
-source("GENIE3.R")
+source("~/GENIE3_R_C_wrapper/GENIE3.R")
 
-boots = 1000000
+boots = 10
 nGene = 10
-bootsPerCore = 1000
+bootsPerCore = 2
 d <- fpkm
 input = d[,grepl("LS|W.*_L",colnames(d))]
 rownames(input) = rownames(fpkm)
 name = "Larva"
-RandomNetworks("Larva")
+runGenie()
+#RandomNetworks()
 
 # codes = c("W.*_L","C.*WH","C.*WG")
 # names = c("WorkLarv","WorkNurseH","WorkNurseG")
