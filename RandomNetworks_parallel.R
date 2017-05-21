@@ -30,8 +30,9 @@ parallelGenie <- function(){
                   "name","nGene","input","runGenie","bootsPerCore")) ##Must export these variables for parLapply to see them
   
   # In parallel, go through all permutations
-  parLapply(cl,1:nReps, function(k) {
-    runGenie(k)
+  p <- parLapply(cl,1:nReps, function(k) {
+    #runGenie(k)
+    rnorm(k)
   })
   stopCluster(cl)
   return()
