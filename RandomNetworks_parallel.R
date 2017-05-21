@@ -69,7 +69,7 @@ input = d[,grepl("LS|W.*_L",colnames(d))]
 rownames(input) = rownames(fpkm)
 name = "Larva"
 p = RandomNetworks()
-
+save(p,"rand.RData")
 # codes = c("W.*_L","C.*WH","C.*WG")
 # names = c("WorkLarv","WorkNurseH","WorkNurseG")
 # input <- GetExpr(codes,names)
