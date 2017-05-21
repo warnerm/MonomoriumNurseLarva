@@ -59,9 +59,9 @@ runGenie <- function(run){
   return()
 }
 
-boots = 1000
+boots = 1000000
 nGene = 10
-bootsPerCore = 100
+bootsPerCore = 500
 d <- fpkm
 input = d[,grepl("LS|W.*_L",colnames(d))]
 rownames(input) = rownames(fpkm)
