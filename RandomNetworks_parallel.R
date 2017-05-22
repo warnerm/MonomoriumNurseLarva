@@ -68,13 +68,17 @@ setInput <- function(codes,names){
       f = factors[grepl(codes[j],rownames(factors))&factors$stage==i,]
       samps = sample(rownames(f),nSamp,replace=FALSE) ##Want same number of samples per sample type
       expr[[j]] = fpkm[,samps]
-      expr[[j]]$gene = with(expr,paste(names[j],rownames(fpkm),collapse="_"))
+      expr[[j]]$tissue=names[j]
+      expr[[j]]$gene = rownames(expr[[j]])
+      expr[[j]]$tissue_gene = with(expr[[j]],paste(tissue,gene,sep="_"))
+      colnames(expr[[j]]) = c(paste("Stage",i,"_",seq(1,nSamp),sep=""),"tissue","gene","tissue_gene")
     }
-    AllExpr[[i]] = ldply(expr)
+    AllExpr[[i]] = ldply(expr,data.frame)
+    rownames(AllExpr[[i]]) = AllExpr[[i]]$tissue_gene
+    AllExpr[[i]] = AllExpr[[i]][,c(1:nSamp)]
   }
   input <- do.call(cbind,AllExpr)
-  rownames(input) = input$gene
-  input <- input[,!grepl("gene",colnames(input))]
+  return(input)
 }
 
 getNsamp <- function(codes,stage){
@@ -86,34 +90,6 @@ getNsamp <- function(codes,stage){
   return(min(nSamp))
 }
 
-
-#Get data frame with expression, gene name, and annotation for a few candidates
-GetExpr <- function(codes,names){
-  d = list()
-  for (i in 1:length(codes)){
-    d[[i]] = ExprTime(codes[i],fpkm,names[i])
-  }
-  data = ldply(d,data.frame)
-  
-  annDat <- merge(data,candidateList,by="gene",all.x=TRUE)
-  annDat$tissue_gene=with(annDat,paste(Samp,Common.Name,sep="_"))
-  return(annDat)
-}
-
-#Calculate expression at each time point for a given set of samples
-ExprTime <- function(code,fpkm,name){
-  expr = matrix(nrow=nrow(fpkm))
-  for (i in 1:5){
-    e=rowSums(fpkm[,grepl(code,colnames(fpkm)) & factors$stage %in% i])/ncol(fpkm[,grepl(code,colnames(fpkm)) & factors$stage %in% i])
-    expr=cbind(expr,e)
-  }
-  expr = expr[,-c(1)]
-  colnames(expr)=paste("Samp",seq(1,5,by=1),sep="")
-  expr = as.data.frame(expr)
-  expr$Samp = rep(name,nrow(expr))
-  expr$gene=rownames(fpkm)
-  return(expr)
-}
 boots = 1000000
 nGene = 10
 bootsPerCore = 500
@@ -121,12 +97,14 @@ d <- fpkm
 input = d[,grepl("LS|W.*_L",colnames(d))]
 rownames(input) = rownames(fpkm)
 name = "Larva"
-RandomNetworks()
-
-
+#RandomNetworks()
 
 codes = c("W.*_L","C.*WH","C.*WG")
 names = c("WorkLarv","WorkNurseH","WorkNurseG")
+input = setInput(codes,names)
+name = "WorkerNet"
+RandomNetworks()
+
 # input <- GetExpr(codes,names)
 # worker = RandomNetworks("Worker")
 # save(worker,file="WorkerGenieParallel.RData")
