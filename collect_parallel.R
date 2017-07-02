@@ -16,7 +16,7 @@ WRsum = ddply(WorkerRes,~regulatory.gene + target.gene,summarize,
               N = length(weight),
               meanW = mean(weight))
 
-WRsum$targReg = apply(WRsum[,("regulatory.gene","target.gene")],1,paste,sep="-")
+WRsum$targReg = apply(WRsum[,c("regulatory.gene","target.gene")],1,paste,sep="-")
 
 #Calculate "socialility index" as mean conn outside individual - mean conn inside tissue
 
