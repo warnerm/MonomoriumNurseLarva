@@ -98,9 +98,9 @@ getNsamp <- function(codes,stage){
   return(min(nSamp))
 }
 
-boots = 100000
+boots = 100
 nGene = 10
-bootsPerCore = 500
+bootsPerCore = 5
 d <- fpkm
 input = d[,grepl("LS|W.*_L",colnames(d))]
 rownames(input) = rownames(fpkm)
