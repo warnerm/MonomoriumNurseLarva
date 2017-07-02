@@ -38,7 +38,7 @@ write.csv(WRsoc,"WorkerNetSocialityDF.csv")
 keep = WRsum$targReg[order(WRsum$meanW,decreasing=TRUE)][1:5000]
 WRsumTop = WRsum[WRsum$targReg %in% keep,]
 
-write.csv(WRsumTop,file="TopConns.csv")\
+write.csv(WRsumTop,file="TopConns.csv")
 
 
 
