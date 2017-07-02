@@ -762,30 +762,6 @@ a=qgraph(linkM[,c(1:3)],layout="circular",
          labels=geneN,label.cex=1,legend=FALSE,shape="circle")
 dev.off()
 
-d <- read.table("~/Documents/workspace/Results2.txt",header=TRUE,sep="\t")
-d$time = seq(1,nrow(d))
-
-###Collect parallel processing results generated from RandomNetworks_parallel.R
-files <- dir("~/Results/",pattern="Larva.*Parallel.RData")
-
-data <- list()
-
-#load all in and store. Do this on cluster.
-for (i in 1:length(files)){
-  load(paste("~/Results/",files[i],sep=""))
-  data[[i]] = Results
-}
-
 df <- ldply(data,data.frame)
-df2 <- ddply(df,c("regulatory.gene","target.gene"),summarise,
-             N = length(weight),
-             c1 = quantile(weight,0.025),
-             c2 = quantile(weight,0.975),
-             mean = mean(weight))
+
 write.csv(df,file="AllConnections.csv")
-
-
-
-
-
-
