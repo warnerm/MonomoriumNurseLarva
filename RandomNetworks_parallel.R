@@ -7,6 +7,14 @@ library(plyr)
 
 
 load("~/cleandata.RData")
+
+##Sort for 1000 most connected genes to reduce dataset size
+corM = cor(t(fpkm))
+conn = colSums(abs(corM))
+conn = conn[order(conn,decreasing=TRUE)]
+keep = names(conn)[1:1000]
+fpkm = fpkm[rownames(fpkm) %in% keep,]
+
 fpkm = log(fpkm + sqrt(fpkm ^ 2 + 1)) #hyperbolic sine transformation to normalize gene expression data
 
 #Create many random networks for a given sample set
@@ -90,7 +98,7 @@ getNsamp <- function(codes,stage){
   return(min(nSamp))
 }
 
-boots = 1000000
+boots = 100000
 nGene = 10
 bootsPerCore = 500
 d <- fpkm
