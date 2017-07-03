@@ -98,7 +98,7 @@ getNsamp <- function(codes,stage){
   return(min(nSamp))
 }
 
-boots = 100000
+boots = 1000000
 nGene = 10
 bootsPerCore = 500
 d <- fpkm
