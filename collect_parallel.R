@@ -2,8 +2,8 @@
 library(plyr)
 
 #Load in results of networks with top 1000 connected genes
-setwd("~/Results/Worker_Results")
-files <- list.files()
+setwd("~/Results")
+files <- list.files(pattern=".*RData")
 load(files[1])
 WorkerRes = Results
 for (i in 2:length(files)){
