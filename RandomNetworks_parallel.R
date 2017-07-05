@@ -111,6 +111,12 @@ codes = c("W.*_L","C.*WH","C.*WG")
 names = c("WorkLarv","WorkNurseH","WorkNurseG")
 input = setInput(codes,names)
 name = "WorkerNet"
+#RandomNetworks()
+
+codes = c("1LW|LS","1LCH|XH","1LCG|XG")
+names = c("SexLarv","SexNurseH","SexNurseG")
+input = setInput(codes,names)
+name = "SexualNet"
 RandomNetworks()
 
 # input <- GetExpr(codes,names)
