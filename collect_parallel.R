@@ -3,23 +3,22 @@ library(plyr)
 
 #Load in results of networks with top 1000 connected genes
 setwd("~/Results")
-# files <- list.files(pattern=".*RData")
-# load(files[1])
-# WorkerRes = Results
-# for (i in 2:length(files)){
-#   load(files[i])
-#   WorkerRes = rbind(WorkerRes,Results)
-# }
-# 
-# #Calculate pairwise mean connection values
-# WRsum = ddply(WorkerRes,~regulatory.gene + target.gene,summarize,
-#               N = length(weight),
-#               meanW = mean(weight))
+files <- list.files(pattern="Sexual.*RData")
+load(files[1])
+WorkerRes = Results
+for (i in 2:length(files)){
+  load(files[i])
+  WorkerRes = rbind(WorkerRes,Results)
+}
 
-#WRsum$targReg =with(WRsum,paste0(regulatory.gene,target.gene))
+#Calculate pairwise mean connection values
+WRsum = ddply(WorkerRes,~regulatory.gene + target.gene,summarize,
+              N = length(weight),
+              meanW = mean(weight))
+
+WRsum$targReg =with(WRsum,paste0(regulatory.gene,target.gene))
 #Calculate "socialility index" as mean conn outside individual - mean conn inside tissue
-#write.csv(WRsum,"WRsum.csv")
-WRsum <- read.csv("WRsum.csv")
+
 
 WRsoc = data.frame(gene = unique(gsub(".*_","",WRsum$regulatory.gene)))
 WRsoc$Lwithin=WRsoc$Lbetween=WRsoc$WHwithin=WRsoc$WHbetween=WRsoc$WGwithin=WRsoc$WGbetween=0
@@ -27,19 +26,19 @@ for (i in 1:nrow(WRsoc)){
   d = WRsum[grepl(WRsoc$gene[i],WRsum$regulatory.gene),]
   WRsoc$Lwithin[i] = mean(d$meanW[grepl("Larv",d$target.gene)&grepl("Larv",d$regulatory.gene)])
   WRsoc$Lbetween[i] = mean(d$meanW[(!grepl("Larv",d$target.gene))&grepl("Larv",d$regulatory.gene)])
-  WRsoc$WHwithin[i] = mean(d$meanW[grepl("WorkNurseH",d$target.gene)&grepl("WorkNurseH",d$regulatory.gene)])
-  WRsoc$WHbetween[i] = mean(d$meanW[(grepl("Larv",d$target.gene))&grepl("WorkNurseH",d$regulatory.gene)])
-  WRsoc$WGwithin[i] = mean(d$meanW[grepl("WorkNurseG",d$target.gene)&grepl("WorkNurseG",d$regulatory.gene)])
-  WRsoc$WGbetween[i] = mean(d$meanW[(grepl("Larv",d$target.gene))&grepl("WorkNurseG",d$regulatory.gene)])
+  WRsoc$WHwithin[i] = mean(d$meanW[grepl("NurseH",d$target.gene)&grepl("NurseH",d$regulatory.gene)])
+  WRsoc$WHbetween[i] = mean(d$meanW[(grepl("Larv",d$target.gene))&grepl("NurseH",d$regulatory.gene)])
+  WRsoc$WGwithin[i] = mean(d$meanW[grepl("NurseG",d$target.gene)&grepl("NurseG",d$regulatory.gene)])
+  WRsoc$WGbetween[i] = mean(d$meanW[(grepl("Larv",d$target.gene))&grepl("NurseG",d$regulatory.gene)])
 }
 
-write.csv(WRsoc,"WorkerNetSocialityDF.csv")
+write.csv(WRsoc,"SexualNetSocialityDF.csv")
 
 #Keep top 5000 connections for further processing
-keep = WRsum$targReg[order(WRsum$meanW,decreasing=TRUE)][1:5000]
-WRsumTop = WRsum[WRsum$targReg %in% keep,]
-
-write.csv(WRsumTop,file="TopConns.csv")
+# keep = WRsum$targReg[order(WRsum$meanW,decreasing=TRUE)][1:5000]
+# WRsumTop = WRsum[WRsum$targReg %in% keep,]
+# 
+# write.csv(WRsumTop,file="TopConns.csv")
 
 
 
