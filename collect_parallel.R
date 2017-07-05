@@ -3,24 +3,24 @@ library(plyr)
 
 #Load in results of networks with top 1000 connected genes
 setwd("~/Results")
-files <- list.files(pattern=".*RData")
-load(files[1])
-WorkerRes = Results
-for (i in 2:length(files)){
-  load(files[i])
-  WorkerRes = rbind(WorkerRes,Results)
-}
+# files <- list.files(pattern=".*RData")
+# load(files[1])
+# WorkerRes = Results
+# for (i in 2:length(files)){
+#   load(files[i])
+#   WorkerRes = rbind(WorkerRes,Results)
+# }
+# 
+# #Calculate pairwise mean connection values
+# WRsum = ddply(WorkerRes,~regulatory.gene + target.gene,summarize,
+#               N = length(weight),
+#               meanW = mean(weight))
 
-#Calculate pairwise mean connection values
-WRsum = ddply(WorkerRes,~regulatory.gene + target.gene,summarize,
-              N = length(weight),
-              meanW = mean(weight))
-
-WRsum$targReg = apply(WRsum[,c("regulatory.gene","target.gene")],1,paste,sep="-")
-
+#WRsum$targReg =with(WRsum,paste0(regulatory.gene,target.gene))
 #Calculate "socialility index" as mean conn outside individual - mean conn inside tissue
+#write.csv(WRsum,"WRsum.csv")
 
-WRsoc = data.frame(gene = unique(gsub(".*_","",)))
+WRsoc = data.frame(gene = unique(gsub(".*_","",WRsum$regulatory.gene)))
 WRsoc$Lwithin=WRsoc$Lbetween=WRsoc$WHwithin=WRsoc$WHbetween=WRsoc$WGwithin=WRsoc$WGbetween=0
 for (i in 1:nrow(WRsoc)){
   d = WRsum[grepl(WRsoc$gene[i],WRsum$regulatory.gene),]
