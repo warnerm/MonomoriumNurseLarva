@@ -17,7 +17,7 @@ collate <- function(name){
   WRsum = ddply(WorkerRes,~regulatory.gene + target.gene,summarize,
                 N = length(weight),
                 meanW = mean(weight))
-  
+  print(head(WRsum))
   WRsum$targReg =with(WRsum,paste0(regulatory.gene,target.gene))
   #Calculate "socialility index" as mean conn outside individual - mean conn inside tissue
   
@@ -40,6 +40,7 @@ collate <- function(name){
     WRsocMax$WGwithin[i] = max(d$meanW[grepl("NurseG",d$target.gene)&grepl("NurseG",d$regulatory.gene)])
     WRsocMax$WGbetween[i] = max(d$meanW[(grepl("Larv",d$target.gene))&grepl("NurseG",d$regulatory.gene)])
   }
+  print(head(WRsocMax))
   
   write.csv(WRsoc,paste(name,"NetSocialityDF.csv",sep=""))
   write.csv(WRsocMax,paste(name,"NetSocialityDFmax.csv",sep=""))
