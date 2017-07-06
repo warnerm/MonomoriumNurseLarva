@@ -12,7 +12,7 @@ collate <- function(name){
     load(files[i])
     WorkerRes = rbind(WorkerRes,Results)
   }
-  
+  print(head(WorkerRes))
   #Calculate pairwise mean connection values
   WRsum = ddply(WorkerRes,~regulatory.gene + target.gene,summarize,
                 N = length(weight),
