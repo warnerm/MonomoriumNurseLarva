@@ -9,11 +9,16 @@ library(plyr)
 load("~/cleandata.RData")
 
 ##Sort for 1000 most connected genes to reduce dataset size
-corM = cor(t(fpkm))
-conn = colSums(abs(corM))
-conn = conn[order(conn,decreasing=TRUE)]
-keep = names(conn)[1:1000]
-fpkm = fpkm[rownames(fpkm) %in% keep,]
+# corM = cor(t(fpkm))
+# conn = colSums(abs(corM))
+# conn = conn[order(conn,decreasing=TRUE)]
+# keep = names(conn)[1:1000]
+# fpkm = fpkm[rownames(fpkm) %in% keep,]
+##Sort for 1000 highest expressed genes to reduce dataset size
+rowS = rowSums(fpkm)
+keep = rowS[order(rowS,decreasing=TRUE)]
+keep = names(keep)[1:1000]
+fpkm = fpkm[keep,]
 
 fpkm = log(fpkm + sqrt(fpkm ^ 2 + 1)) #hyperbolic sine transformation to normalize gene expression data
 
@@ -110,13 +115,13 @@ name = "Larva"
 codes = c("W.*_L","C.*WH","C.*WG")
 names = c("WorkLarv","WorkNurseH","WorkNurseG")
 input = setInput(codes,names)
-name = "WorkerNet"
+name = "WorkerNetTopExpr"
 #RandomNetworks()
 
 codes = c("1LW|LS","1LCH|XH","1LCG|XG")
 names = c("SexLarv","SexNurseH","SexNurseG")
 input = setInput(codes,names)
-name = "SexualNet"
+name = "SexualNetTopExpr"
 RandomNetworks()
 
 # input <- GetExpr(codes,names)
