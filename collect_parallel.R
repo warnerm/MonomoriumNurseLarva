@@ -17,6 +17,13 @@ collate <- function(name){
   WRsum = ddply(WorkerRes,~regulatory.gene + target.gene,summarize,
                 N = length(weight),
                 meanW = mean(weight))
+  WRsum = WRsum[order(WRsum$meanW,decreasing=TRUE),]
+  WRsum$regT = WRsum$targT = "Larva"
+  WRsum$regT[!grepl("Larv",WRsum$regulatory.gene)]="Worker"
+  WRsum$targT[!grepl("Larv",WRsum$target.gene)]="Worker"
+  betWR = WRsum[WRsum$regT!=WRsum$targT,]
+  betWR = WRsum[c(1:10000),]
+  write.csv(betWR,file=paste(name,"TopConns.csv",sep=""))
   print(head(WRsum))
   WRsum$targReg =with(WRsum,paste0(regulatory.gene,target.gene))
   #Calculate "socialility index" as mean conn outside individual - mean conn inside tissue
