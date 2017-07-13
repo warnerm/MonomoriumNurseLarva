@@ -22,7 +22,7 @@ collate <- function(name){
   WRsum$regT[!grepl("Larv",WRsum$regulatory.gene)]="Worker"
   WRsum$targT[!grepl("Larv",WRsum$target.gene)]="Worker"
   betWR = WRsum[WRsum$regT!=WRsum$targT,]
-  betWR = WRsum[c(1:10000),]
+  betWR = betWR[c(1:10000),]
   write.csv(betWR,file=paste(name,"TopConns.csv",sep=""))
   print(head(WRsum))
   WRsum$targReg =with(WRsum,paste0(regulatory.gene,target.gene))
@@ -53,8 +53,10 @@ collate <- function(name){
   write.csv(WRsocMax,paste(name,"NetSocialityDFmax.csv",sep=""))
 }
 
-#collate("WorkerNetTopExpr")
-collate("SexualNetTopExpr")
+#collate("TopExprWorkerNet")
+#collate("TopExprSexualNet")
+collate("WorkerNet[0-9]")
+collate("SexualNet[0-9]")
 #Keep top 5000 connections for further processing
 # keep = WRsum$targReg[order(WRsum$meanW,decreasing=TRUE)][1:5000]
 # WRsumTop = WRsum[WRsum$targReg %in% keep,]
