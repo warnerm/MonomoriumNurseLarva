@@ -28,7 +28,7 @@ collate <- function(name){
   WRsum$targReg =with(WRsum,paste0(regulatory.gene,target.gene))
   #Calculate "socialility index" as mean conn outside individual - mean conn inside tissue
   
-  
+  write.csv(WRsum,file=paste(name,"WRsum.csv",sep=""))
   WRsoc = data.frame(gene = unique(gsub(".*_","",WRsum$regulatory.gene)))
   WRsoc$Lwithin=WRsoc$Lbetween=WRsoc$WHwithin=WRsoc$WHbetween=WRsoc$WGwithin=WRsoc$WGbetween=0
   WRsocMax = WRsoc
