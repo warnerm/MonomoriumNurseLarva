@@ -55,7 +55,10 @@ collate <- function(name){
 
 collate("TopExprWorkerNet")
 collate("TopExprSexualNet")
+collate("TopExprRandomNet")
+
 collate("TopConnWorkerNet")
 collate("TopConnSexualNet")
+collate("TopConnRandomNet")
 
 
