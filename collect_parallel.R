@@ -53,8 +53,8 @@ collate <- function(name){
   write.csv(WRsocMax,paste(name,"NetSocialityDFmax.csv",sep=""))
 }
 
-collate("TopExprWorkerNet")
-collate("TopExprSexualNet")
+#collate("TopExprWorkerNet")
+collate("SexualNetTopExpr")
 collate("WorkerNet[0-9]")
 collate("SexualNet[0-9]")
 #Keep top 5000 connections for further processing
