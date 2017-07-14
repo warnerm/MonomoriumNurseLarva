@@ -53,15 +53,9 @@ collate <- function(name){
   write.csv(WRsocMax,paste(name,"NetSocialityDFmax.csv",sep=""))
 }
 
-#collate("TopExprWorkerNet")
-collate("SexualNetTopExpr")
-collate("WorkerNet[0-9]")
-collate("SexualNet[0-9]")
-#Keep top 5000 connections for further processing
-# keep = WRsum$targReg[order(WRsum$meanW,decreasing=TRUE)][1:5000]
-# WRsumTop = WRsum[WRsum$targReg %in% keep,]
-# 
-# write.csv(WRsumTop,file="TopConns.csv")
-
+collate("TopExprWorkerNet")
+collate("TopExprSexualNet")
+collate("TopConnWorkerNet")
+collate("TopConnSexualNet")
 
 
