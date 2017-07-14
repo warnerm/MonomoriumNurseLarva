@@ -5,31 +5,11 @@
 library(parallel)
 library(plyr)
 
-
-load("~/cleandata.RData")
-
-##Sort for 1000 most connected genes to reduce dataset size
-# corM = cor(t(fpkm))
-# conn = colSums(abs(corM))
-# conn = conn[order(conn,decreasing=TRUE)]
-# keep = names(conn)[1:1000]
-# fpkm = fpkm[rownames(fpkm) %in% keep,]
-##Sort for 1000 highest expressed genes to reduce dataset size
-rowS = rowSums(fpkm)
-keep = rowS[order(rowS,decreasing=TRUE)]
-keep = names(keep)[1:1000]
-fpkm = fpkm[keep,]
-
-fpkm = log(fpkm + sqrt(fpkm ^ 2 + 1)) #hyperbolic sine transformation to normalize gene expression data
-
 #Create many random networks for a given sample set
 RandomNetworks <- function(){
   parallelGenie()
   return()
 }
-
-
-
 
 #Parallel wrapper for genie function
 parallelGenie <- function(){
@@ -106,17 +86,22 @@ getNsamp <- function(codes,stage){
 boots = 1000000
 nGene = 10
 bootsPerCore = 500
-d <- fpkm
-input = d[,grepl("LS|W.*_L",colnames(d))]
-rownames(input) = rownames(fpkm)
-name = "Larva"
-#RandomNetworks()
+
+load("~/cleandata.RData")
+
+##Sort for 1000 highest expressed genes to reduce dataset size
+rowS = rowSums(fpkm)
+keep = rowS[order(rowS,decreasing=TRUE)]
+keep = names(keep)[1:1000]
+fpkm = fpkm[keep,]
+
+fpkm = log(fpkm + sqrt(fpkm ^ 2 + 1)) #hyperbolic sine transformation to normalize gene expression data
 
 codes = c("W.*_L","C.*WH","C.*WG")
 names = c("WorkLarv","WorkNurseH","WorkNurseG")
 input = setInput(codes,names)
 name = "TopExprWorkerNet"
-#RandomNetworks()
+RandomNetworks()
 
 codes = c("1LW|LS","1LCH|XH","1LCG|XG")
 names = c("SexLarv","SexNurseH","SexNurseG")
@@ -124,12 +109,38 @@ input = setInput(codes,names)
 name = "TopExprSexualNet"
 RandomNetworks()
 
-# input <- GetExpr(codes,names)
-# worker = RandomNetworks("Worker")
-# save(worker,file="WorkerGenieParallel.RData")
-# 
-# codes = c("LS|1LW","XH|1LCH","XG|1LCG")
-# names = c("SexLarv","SexNurseH","SexNurseG")
-# sexual = RandomNetworks("Sexual")
-# save(sexual,file="SexualGenieParallel.RData")
+codes = c("QW","RH","RG")
+names = c("WorkLarv","RNurseH","RNurseG")
+input = setInput(codes,names)
+name = "TopExprRandomNet"
+RandomNetworks()
+
+load("~/cleandata.RData")
+
+##Sort for 1000 most connected genes to reduce dataset size
+corM = cor(t(fpkm))
+conn = colSums(abs(corM))
+conn = conn[order(conn,decreasing=TRUE)]
+keep = names(conn)[1:1000]
+fpkm = fpkm[rownames(fpkm) %in% keep,]
+
+fpkm = log(fpkm + sqrt(fpkm ^ 2 + 1)) #hyperbolic sine transformation to normalize gene expression data
+
+codes = c("W.*_L","C.*WH","C.*WG")
+names = c("WorkLarv","WorkNurseH","WorkNurseG")
+input = setInput(codes,names)
+name = "TopConnWorkerNet"
+RandomNetworks()
+
+codes = c("1LW|LS","1LCH|XH","1LCG|XG")
+names = c("SexLarv","SexNurseH","SexNurseG")
+input = setInput(codes,names)
+name = "TopConnSexualNet"
+RandomNetworks()
+
+codes = c("QW","RH","RG")
+names = c("WorkLarv","RNurseH","RNurseG")
+input = setInput(codes,names)
+name = "TopConnRandomNet"
+RandomNetworks()
 
