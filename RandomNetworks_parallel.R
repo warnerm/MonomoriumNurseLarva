@@ -48,7 +48,7 @@ runGenie <- function(run){
     }
   }
   Results = ldply(Results)
-  save(Results,file=paste("~/Results/",name,run,"GenieParallel.RData",sep=""))
+  save(Results,file=paste("~/Results/bigboot/",name,run,"GenieParallel.RData",sep=""))
   return()
 }
 
