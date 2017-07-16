@@ -83,7 +83,7 @@ getNsamp <- function(codes,stage){
   return(min(nSamp))
 }
 
-boots = 1000000
+boots = 10000000
 nGene = 10
 bootsPerCore = 500
 
