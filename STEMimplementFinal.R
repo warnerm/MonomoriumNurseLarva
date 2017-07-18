@@ -765,3 +765,15 @@ dev.off()
 df <- ldply(data,data.frame)
 
 write.csv(df,file="AllConnections.csv")
+
+############
+#After running 
+
+
+#Calculate "sociality index" as mean connection weight 
+#of regulatory conns to larvae/nurses - mean connection weight of within-tissue
+
+#Load in snipre data, compare evolutionary rate (gamma and Rest, or possibly f from MKtest) to sociality index
+#Could also compare direction of selection..
+#Expect negative relationship between gamma and "sociality index"
+
