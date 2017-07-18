@@ -144,6 +144,82 @@ dfAll = merge(dfAll,sn,by.x="Gene",by.y="gene")
 
 dfAll$midF = (dfAll$f.est+dfAll$BSnIPRE.f)/2
 
+d2 <- melt(dfAll[,c(1,30:35,27,48)],id.vars=c("Gene","PS2","midF"))
+d2$tissue="Larva"
+d2$tissue[grepl("WG",d2$variable)]="WorkerGaster"
+d2$tissue[grepl("WH",d2$variable)]="WorkerHead"
+d2$connection.type = "within"
+d2$connection.type[grepl("between",d2$variable)]="between"
+d3 <- dcast(d2, PS2+tissue+Gene+midF ~ connection.type)
+
+
+d3$SI = d3$between - d3$within
+d3 = d3[!is.na(d3$PS2),]
+d3$PS2 = factor(d3$PS2,levels = c("cellular","bilaterian","eukaryote","insect","hymenopteran_ant"))
+png("~/Writing/Figures/NurseLarva/Fig2.png",width=3000,height=3000,res=300)
+ggplot(d3[!is.na(d3$PS2),],aes(x=tissue,y=SI,color=PS2))+geom_boxplot()+
+  theme_bw()+
+  theme(axis.text=element_text(size=15),
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=15),
+        legend.title=element_text(size=20))
+dev.off()
+  
+lm <- glm(SIWG ~ PS2, data=dfAll) 
+summary(glht(lm, mcp(PS2="Tukey"))) 
+
+
+ggplot(dfAll,aes(x=SIWH,y=SIWG,color=PS2))+geom_point()
+
+d4 <- ddply(dfAll,~PS2,summarise,
+            meanWG = mean(SIWG),
+            c1B = quantile(bootMean(SIWG,1000),0.025),
+            c2B = quantile(bootMean(SIWG,1000),0.975),
+            meanWH = mean(SIWH),
+            c1W = quantile(bootMean(SIWH,1000),0.025),
+            c2W = quantile(bootMean(SIWH,1000),0.975))
+
+png("~/Writing/Figures/NurseLarva/Fig2b.png",width=3000,height=3000,res=300)
+ggplot(d4[!is.na(d4$PS2),],aes(x=meanWG,y=meanWH,color=PS2))+
+  geom_point(size=3)+
+  geom_errorbarh(aes(xmin=c1B,xmax=c2B))+
+  geom_errorbar(aes(ymin=c1W,ymax=c2W))+
+  theme_bw()+
+  theme(axis.text=element_text(size=15),
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=15),
+        legend.title=element_text(size=20))
+dev.off()
+
+png("~/Writing/Figures/NurseLarva/Fig3a.png",width=3000,height=3000,res=300)
+ggplot(dfAll[!is.na(dfAll$PS2),],aes(x=SIWH,y=midF,color=PS2))+geom_point()+theme_bw()+
+  theme(axis.text=element_text(size=15),
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=15),
+        legend.title=element_text(size=20))+
+  ggtitle("cor = 0.11, p = 0.007")
+dev.off()
+
+png("~/Writing/Figures/NurseLarva/Fig3b.png",width=3000,height=3000,res=300)
+ggplot(dfAll[!is.na(dfAll$PS2),],aes(x=SIWG,y=midF,color=PS2))+geom_point()+theme_bw()+
+  theme(axis.text=element_text(size=15),
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=15),
+        legend.title=element_text(size=20))+
+  ggtitle("cor = 0.17, p < 0.001")
+dev.off()
+
+png("~/Writing/Figures/NurseLarva/Fig3c.png",width=3000,height=3000,res=300)
+ggplot(dfAll[!is.na(dfAll$PS2),],aes(x=SIL,y=midF,color=PS2))+geom_point()+theme_bw()+
+  theme(axis.text=element_text(size=15),
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=15),
+        legend.title=element_text(size=20))+
+  ggtitle("cor = 0.123, p = 0.002")
+dev.off()
+
+
+
 png("~/Writing/Figures/NurseLarva/Fig4b.png",width=3000,height=3000,res=300)
 ggplot(dfAll[!is.na(dfAll$PS2),],aes(x=SIWG,y=SIWH))+geom_point(size=3)+
   theme_bw()+xlab("Sociality Index (WG)")+ylab("Sociality Index (WH)")+
