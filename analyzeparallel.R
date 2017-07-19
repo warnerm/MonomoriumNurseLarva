@@ -85,6 +85,16 @@ resWconn <- glmConn("TopConnWorkerNetNetSocialityDF")
 resSconn <- glmConn("TopConnSexualNetNetSocialityDF")
 resRconn <- glmConn("TopConnRandomNetNetSocialityDF")
 
+
+bootMean <- function(data,boots){
+  res = c()
+  for (i in 1:boots){
+    d = sample(data,length(data),replace=TRUE)
+    res = c(res,mean(d,na.rm=TRUE))
+  }
+  return(res)
+}
+
 df <- read.csv("~/Data/TopExprWorkerNetNetSocialityDF.csv")
 
 ###Fig 4a
@@ -143,9 +153,10 @@ df$SIW = ((df$SIWH+df$SIWG)/2+df$SIL)/2
 
 dfAll = merge(ext,df,by.x="Gene",by.y="gene")
 dfAll = merge(dfAll,sn,by.x="Gene",by.y="gene")
+dfAll$PS2 = factor(dfAll$PS2, levels = c("cellular","eukaryote","bilaterian","insect","hymenopteran_ant"))
 
 dfAll$midF = (dfAll$f.est+dfAll$BSnIPRE.f)/2
-
+dfAll = dfAll[!is.na(dfAll$PS2),]
 d2 <- melt(dfAll[,c(1,30:35,27,48)],id.vars=c("Gene","PS2","midF"))
 d2$tissue="Larva"
 d2$tissue[grepl("WG",d2$variable)]="WorkerGaster"
@@ -159,8 +170,9 @@ d3$SI = d3$between - d3$within
 d3 = d3[!is.na(d3$PS2),]
 d3$PS2 = factor(d3$PS2,levels = c("cellular","eukaryote","bilaterian","insect","hymenopteran_ant"))
 png("~/Writing/Figures/NurseLarva/Fig2.png",width=3000,height=3000,res=300)
-ggplot(d3[!is.na(d3$PS2),],aes(x=tissue,y=SI,color=PS2))+geom_boxplot()+
+ggplot(d3[!is.na(d3$PS2),],aes(x=tissue,y=SI,fill=PS2))+geom_boxplot()+
   theme_bw()+ylab("sociality index")+
+  scale_fill_manual(values=cbbPalette)+
   theme(axis.text=element_text(size=15),
         axis.title=element_text(size=20),
         legend.text=element_text(size=15),
@@ -187,6 +199,7 @@ ggplot(d4[!is.na(d4$PS2),],aes(x=meanWG,y=meanWH,color=PS2))+
   geom_errorbarh(aes(xmin=c1B,xmax=c2B))+
   geom_errorbar(aes(ymin=c1W,ymax=c2W))+
   theme_bw()+
+  scale_color_manual(values=cbbPalette)+
   theme(axis.text=element_text(size=15),
         axis.title=element_text(size=20),
         legend.text=element_text(size=15),
@@ -199,6 +212,7 @@ ggplot(dfAll[!is.na(dfAll$PS2),],aes(x=SIWH,y=midF,color=PS2))+geom_point()+them
         axis.title=element_text(size=20),
         legend.text=element_text(size=15),
         legend.title=element_text(size=20))+
+  scale_color_manual(values=cbbPalette)+
   ggtitle("cor = 0.11, p = 0.007")
 dev.off()
 
@@ -208,6 +222,7 @@ ggplot(dfAll[!is.na(dfAll$PS2),],aes(x=SIWG,y=midF,color=PS2))+geom_point()+them
         axis.title=element_text(size=20),
         legend.text=element_text(size=15),
         legend.title=element_text(size=20))+
+  scale_color_manual(values=cbbPalette)+
   ggtitle("cor = 0.17, p < 0.001")
 dev.off()
 
@@ -217,6 +232,7 @@ ggplot(dfAll[!is.na(dfAll$PS2),],aes(x=SIL,y=midF,color=PS2))+geom_point()+theme
         axis.title=element_text(size=20),
         legend.text=element_text(size=15),
         legend.title=element_text(size=20))+
+  scale_color_manual(values=cbbPalette)+
   ggtitle("cor = 0.123, p = 0.002")
 dev.off()
 
@@ -255,6 +271,7 @@ ggplot(corM,aes(x=Var2,y=Var1))+geom_tile(aes(fill=value))+
   scale_fill_gradient2(name="Pearson cor",low=muted("blue"),high=muted("red"),mid="white")+
   xlab("phylostrata")+ylab("connectivity measurement")+
   ggtitle("Correlation of f with connectivity")+
+  theme_bw()+
   theme(axis.text=element_text(size=15),
         axis.title=element_text(size=20),
         legend.text=element_text(size=15),
@@ -263,99 +280,7 @@ dev.off()
 
 ######
 ##Fig 5: add in queen expression
-fpkm = log(fpkm + sqrt(fpkm ^ 2 + 1)) #hyperbolic sine transformation to normalize gene expression data
-
-meanQH = rowSums(fpkm[,grepl("QH",colnames(fpkm))])
-meanQG = rowSums(fpkm[,grepl("QG",colnames(fpkm))])
-
-expr = data.frame(QH=meanQH,QG=meanQG,Gene=names(meanQH))
-d = merge(dfAll,expr,by="Gene")
-
-
-
-
-
-
-
-
-png("~/Writing/Figures/NurseLarva/Fig4b.png",width=3000,height=3000,res=300)
-ggplot(dfAll[!is.na(dfAll$PS2),],aes(x=SIWG,y=SIWH))+geom_point(size=3)+
-  theme_bw()+xlab("Sociality Index (WG)")+ylab("Sociality Index (WH)")+
-  theme(axis.text=element_text(size=15),
-        axis.title=element_text(size=20))
-dev.off()
-
-bootMean <- function(data,boots){
-  res = c()
-  for (i in 1:boots){
-    d = sample(data,length(data),replace=TRUE)
-    res = c(res,mean(d,na.rm=TRUE))
-  }
-  return(res)
-}
-
-SumSI <- function(dfAll){
-  d = ddply(dfAll,~PS2,
-            meanSI = mean(bootMean(eval(parse(text=SI)),1000)),summarise,
-            c1SI = quantile(bootMean(eval(parse(text=SI)),1000),0.025),
-            c2SI = quantile(bootMean(eval(parse(text=SI)),1000),0.975),
-            meanF = mean(midF),
-            c1F = quantile(bootMean(midF,1000),0.025),
-            c2F = quantile(bootMean(midF,1000),0.975))
-  return(d)
-}
-
-SI = "SI_Overall" ##ddply can't evaluate a passed variable, so have to define it globally
-d <- SumSI(dfAll)[1:5,] #remove "NA" PS2
-
-png("~/Writing/Figures/NurseLarva/Fig4c.png",width=3000,height=3000,res=300)
-ggplot(d[1:5,],aes(x=meanSI,y=meanF,color=PS2))+geom_point(size=4,shape=1)+
-  geom_errorbarh(aes(xmin=c1SI,xmax=c2SI),size=1.5)+
-  geom_errorbar(aes(ymin=c1F,ymax=c2F),size=1.5)+
-  ylab("% neutral loci")+
-  xlab("sociality index, workers")+
-  theme_bw()+
-  scale_colour_manual(values=cbbPalette,name="PS2")+
-  theme(axis.text=element_text(size=15),axis.title=element_text(size=20),
-        legend.text=element_text(size=15),legend.title=element_text(size=20))+
-  geom_point(data=dfAll,aes(x=SIW,y=midF),size=1)
-dev.off()
-
-png("~/Writing/Figures/NurseLarva/Fig4d.png",width=3000,height=3000,res=300)
-ggplot(d[1:5,],aes(x=meanSI,y=meanF,color=PS2))+geom_point(size=8,shape=1,stroke=2)+
-  geom_errorbarh(aes(xmin=c1SI,xmax=c2SI),size=1)+
-  geom_errorbar(aes(ymin=c1F,ymax=c2F),size=1)+
-  ylab("mean % neutral loci")+
-  xlab("mean sociality index, workers")+
-  theme_bw()+
-  scale_colour_manual(values=cbbPalette,name="PS2")+
-  theme(axis.text=element_text(size=15),axis.title=element_text(size=20),
-        legend.text=element_text(size=15),legend.title=element_text(size=20))
-dev.off()
-
-####EdgeR
-library(edgeR)
 load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
-EdgeR <- function(data,design,coef){
-  data <- DGEList(counts=data)
-  data <- calcNormFactors(data)
-  dat <- estimateGLMTrendedDisp(data, design)
-  dat <- estimateGLMTagwiseDisp(dat, design)
-  fit <- glmFit(dat,design)
-  diff <- glmLRT(fit, coef=coef) 
-  out <- topTags(diff,n=Inf,adjust.method="BH")$table 	###Calculate FDR
-  return(out)
-}
-
-logFCconn <- function(code){
-  df <- counts[,grepl(code,colnames(counts))]
-  f <- factors[rownames(factors) %in% colnames(df),]
-  design <- model.matrix(~Caste,data=droplevels(f))
-  a <- EdgeR(df,design,2)
-  a$Gene = rownames(a)
-  d <- merge(dfAll,a,by="Gene")
-  ggplot(d,aes(x=SIWH,y=logFC))+geom_point()
-}
 fpkm = log(fpkm + sqrt(fpkm ^ 2 + 1)) #hyperbolic sine transformation to normalize gene expression data
 
 meanQH = rowSums(fpkm[,grepl("QH",colnames(fpkm))])
@@ -363,67 +288,30 @@ meanQG = rowSums(fpkm[,grepl("QG",colnames(fpkm))])
 
 expr = data.frame(QH=meanQH,QG=meanQG,Gene=names(meanQH))
 d = merge(dfAll,expr,by="Gene")
-lm <- glm(log(f.est) ~ PS2 + QH + QG + WHwithin + WGwithin+
-            WHbetween + WGwithin +
-            Lwithin + Lbetween,data=d)
+d = d[!is.na(d$PS2),]
+d$PS2 = factor(d$PS2, levels = c("cellular","eukaryote","bilaterian","insect","hymenopteran_ant"))
 
-lm <- glm(log(f.est) ~ PS2 + QH + QG + SIWH + SIWG + SIL,data=d)
-drop1(lm,.~.,test="Chi") 
-summary(glht(lm, mcp(PS2="Tukey"))) 
+png("~/Writing/Figures/NurseLarva/Fig5a.png",width=3000,height=3000,res=300)
+ggplot(d,aes(x=QH,y=SIWH,color=PS2))+geom_point()+
+  scale_color_manual(values=cbbPalette)+
+  theme_bw()+
+  ylab("nurse head sociality index")+xlab("queen head normalized expression")+
+  theme(axis.text=element_text(size=15),
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=15),
+        legend.title=element_text(size=20))
+dev.off()
 
-lm <- glm(log(f.est) ~  SIWH + SIWG,data=d)
-lm <- glm(SIWG ~ PS2,data=d)
+png("~/Writing/Figures/NurseLarva/Fig5b.png",width=3000,height=3000,res=300)
+ggplot(d,aes(x=QG,y=SIWG,color=PS2))+geom_point()+
+  scale_color_manual(values=cbbPalette)+
+  theme_bw()+
+  ylab("nurse gaster sociality index")+xlab("queen gaster normalized expression")+
+  theme(axis.text=element_text(size=15),
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=15),
+        legend.title=element_text(size=20))
+dev.off()
 
-dfAllH <- merge(dfAll,df,)
-
-df <- counts[,grepl("QG|WG",colnames(counts))]
-f <- factors[rownames(factors) %in% colnames(df),]
-design <- model.matrix(~Caste,data=droplevels(f))
-b <- EdgeR(df,design,2)
-
-d2 <- melt(dfAll[,c(1,30:35,27,48)],id.vars=c("Gene","PS2","midF"))
-d2$tissue="Larva"
-d2$tissue[grepl("WG",d2$variable)]="WorkerGaster"
-d2$tissue[grepl("WH",d2$variable)]="WorkerHead"
-d2$connection.type = "within"
-d2$connection.type[grepl("between",d2$variable)]="between"
-d3 <- dcast(d2, PS2+tissue+Gene+midF ~ connection.type)
-
-ggplot(d3, aes(x=within,y=between,color=PS2,shape=tissue))+
-  geom_point()
-
-d4 <- ddply(d3,~PS2+tissue,summarise,
-            meanB = mean(between),
-            c1B = quantile(bootMean(between,1000),0.025),
-            c2B = quantile(bootMean(between,1000),0.975),
-            meanW = mean(within),
-            c1W = quantile(bootMean(within,1000),0.025),
-            c2W = quantile(bootMean(within,1000),0.975))
-
-ggplot(d4[!is.na(d4$PS2),],aes(x=meanW,y=meanB,color=PS2,shape=tissue))+
-  geom_point(size=3)+
-  geom_errorbar(aes(ymin=c1B,ymax=c2B))+
-  geom_errorbarh(aes(xmin=c1W,xmax=c2W))+
-  theme_bw()
-
-d3$SI = d3$between - d3$within
-ggplot(d3[!is.na(d3$PS2),],aes(x=tissue,y=SI,color=PS2))+geom_boxplot()
-ggplot(d3[!is.na(d3$PS2),],aes(x=SI,y=midF,color=PS2,shape=tissue))+geom_point()
-
-d4 <- ddply(d3,~PS2+tissue,summarise,
-            meanSI = mean(SI),
-            c1B = quantile(bootMean(SI,1000),0.025),
-            c2B = quantile(bootMean(SI,1000),0.975),
-            meanF = mean(midF),
-            c1W = quantile(bootMean(midF,1000),0.025),
-            c2W = quantile(bootMean(midF,1000),0.975))
-
-ggplot(d4[!is.na(d4$PS2),],aes(x=meanSI,y=meanF,color=PS2,shape=tissue))+
-  geom_point(size=3)+
-  geom_errorbarh(aes(xmin=c1B,xmax=c2B))+
-  geom_errorbar(aes(ymin=c1W,ymax=c2W))+
-  theme_bw()
-
-dOld = d[d$PS2=="cellular",]
 
 
