@@ -1,5 +1,7 @@
 cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
-
+library(scales)
+library(plyr)
+library(reshape2)
 
 ext <- read.csv("~/Downloads/msx123_Supp (1)/External Database S1.csv")
 
@@ -155,10 +157,10 @@ d3 <- dcast(d2, PS2+tissue+Gene+midF ~ connection.type)
 
 d3$SI = d3$between - d3$within
 d3 = d3[!is.na(d3$PS2),]
-d3$PS2 = factor(d3$PS2,levels = c("cellular","bilaterian","eukaryote","insect","hymenopteran_ant"))
+d3$PS2 = factor(d3$PS2,levels = c("cellular","eukaryote","bilaterian","insect","hymenopteran_ant"))
 png("~/Writing/Figures/NurseLarva/Fig2.png",width=3000,height=3000,res=300)
 ggplot(d3[!is.na(d3$PS2),],aes(x=tissue,y=SI,color=PS2))+geom_boxplot()+
-  theme_bw()+
+  theme_bw()+ylab("sociality index")+
   theme(axis.text=element_text(size=15),
         axis.title=element_text(size=20),
         legend.text=element_text(size=15),
@@ -217,6 +219,62 @@ ggplot(dfAll[!is.na(dfAll$PS2),],aes(x=SIL,y=midF,color=PS2))+geom_point()+theme
         legend.title=element_text(size=20))+
   ggtitle("cor = 0.123, p = 0.002")
 dev.off()
+
+####
+##Fig 4: relationship between f and d
+d = droplevels(dfAll[!is.na(dfAll$PS2),])
+d$PS2 = factor(d$PS2, levels = c("cellular","eukaryote","bilaterian","insect","hymenopteran_ant"))
+corMat = pMat = matrix(nrow=6,ncol=11)
+
+for (j in 1:11){
+  for (i in 1:5){
+    d2 = d[d$PS2==levels(d$PS2)[i],]
+    res= cor.test(d2$midF,d2[,c(29+j)])
+    corMat[i,j] = res$estimate
+    pMat[i,j] = res$p.value
+  }
+  res = cor.test(d$midF,d[,c(29+j)])
+  corMat[6,j] = res$estimate
+  pMat[6,j] = res$p.value
+}
+
+colnames(pMat) = colnames(corMat) = colnames(d2)[c(30:40)]
+rownames(pMat) = rownames(corMat) = c(levels(d2$PS2),"Overall")
+
+##Quick heatmap
+pMat = t(pMat[,-c(11)])
+corMat = t(corMat[,-c(11)])
+corM = melt(corMat)
+corP = melt(pMat)
+corM$p.value = corP$value
+corM$text = apply(round(corM[,c(3,4)],3),1,paste,collapse="\n")
+corM$text[corM$p.value < 0.001]=gsub("\n0","\n<0.001",corM$text[corM$p.value < 0.001])
+png("~/Writing/Figures/NurseLarva/Fig4heatmap.png",width=3000,height=3000,res=300)
+ggplot(corM,aes(x=Var2,y=Var1))+geom_tile(aes(fill=value))+
+  geom_text(aes(label=text))+
+  scale_fill_gradient2(name="Pearson cor",low=muted("blue"),high=muted("red"),mid="white")+
+  xlab("phylostrata")+ylab("connectivity measurement")+
+  ggtitle("Correlation of f with connectivity")+
+  theme(axis.text=element_text(size=15),
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=15),
+        legend.title=element_text(size=20))
+dev.off()
+
+######
+##Fig 5: add in queen expression
+fpkm = log(fpkm + sqrt(fpkm ^ 2 + 1)) #hyperbolic sine transformation to normalize gene expression data
+
+meanQH = rowSums(fpkm[,grepl("QH",colnames(fpkm))])
+meanQG = rowSums(fpkm[,grepl("QG",colnames(fpkm))])
+
+expr = data.frame(QH=meanQH,QG=meanQG,Gene=names(meanQH))
+d = merge(dfAll,expr,by="Gene")
+
+
+
+
+
 
 
 
