@@ -2,6 +2,7 @@ cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2"
 library(scales)
 library(plyr)
 library(reshape2)
+library(gridExtra)
 
 ext <- read.csv("~/Downloads/msx123_Supp (1)/External Database S1.csv")
 
@@ -97,7 +98,6 @@ bootMean <- function(data,boots){
 
 df <- read.csv("~/Data/TopExprWorkerNetNetSocialityDF.csv")
 
-###Fig 4a
 d2 <- melt(dfAll[,c(1,30:35)],id.vars="Gene")
 d2$tissue="Larva"
 d2$tissue[grepl("WG",d2$variable)]="WorkerGaster"
@@ -106,19 +106,22 @@ d2$connection.type = "within tissue"
 d2$connection.type[grepl("between",d2$variable)]="between tissue"
 
 png("~/Writing/Figures/NurseLarva/Fig1a.png",width=3000,height=3000,res=300)
-ggplot(d2,aes(x=tissue,y=value,fill=connection.type))+geom_boxplot()+
+p1 <- ggplot(d2,aes(x=tissue,y=value,fill=connection.type))+geom_boxplot()+
   theme_bw()+xlab("tissue")+ylab("connection strength")+
   scale_fill_grey(start = 0.5, end = 0.8,name="connection type")+
   theme(axis.text=element_text(size=15),
         axis.title=element_text(size=20),
         legend.text=element_text(size=15),
-        legend.title=element_text(size=20))
+        legend.title=element_text(size=20),
+        legend.position = "top")
+  
 dev.off()
-
+maxConn = max(c(dfAll$WHbetween,dfAll$WHwithin,dfAll$WGbetween,
+                dfAll$WHwithin,dfAll$Lwithin,dfAll$Lbetween))
 png("~/Writing/Figures/NurseLarva/Fig1b.png",width=3000,height=3000,res=300)
-ggplot(dfAll,aes(x=WHwithin,y=WHbetween))+geom_point()+
+p2 <- ggplot(dfAll,aes(x=WHwithin,y=WHbetween))+geom_point()+
   theme_bw()+xlab("within")+ggtitle("WH connection strength")+
-  ylab("between")+geom_abline(slope=1)+
+  ylab("between")+geom_abline(slope=1)+xlim(0,0.25)+ylim(0,0.25)+
   theme(axis.text=element_text(size=15),
         axis.title=element_text(size=20),
         legend.text=element_text(size=15),
@@ -126,9 +129,9 @@ ggplot(dfAll,aes(x=WHwithin,y=WHbetween))+geom_point()+
 dev.off()
 
 png("~/Writing/Figures/NurseLarva/Fig1c.png",width=3000,height=3000,res=300)
-ggplot(dfAll,aes(x=WGwithin,y=WGbetween))+geom_point()+
+p3 <- ggplot(dfAll,aes(x=WGwithin,y=WGbetween))+geom_point()+
   theme_bw()+xlab("within")+ggtitle("WG connection strength")+
-  ylab("between")+geom_abline(slope=1)+
+  ylab("between")+geom_abline(slope=1)+xlim(0,0.25)+ylim(0,0.25)+
   theme(axis.text=element_text(size=15),
         axis.title=element_text(size=20),
         legend.text=element_text(size=15),
@@ -136,13 +139,17 @@ ggplot(dfAll,aes(x=WGwithin,y=WGbetween))+geom_point()+
 dev.off()
 
 png("~/Writing/Figures/NurseLarva/Fig1d.png",width=3000,height=3000,res=300)
-ggplot(dfAll,aes(x=Lwithin,y=Lbetween))+geom_point()+
+p4 <- ggplot(dfAll,aes(x=Lwithin,y=Lbetween))+geom_point()+
   theme_bw()+xlab("within")+ggtitle("L connection strength")+
-  ylab("between")+geom_abline(slope=1)+
+  ylab("between")+geom_abline(slope=1)+xlim(0,0.25)+ylim(0,0.25)+
   theme(axis.text=element_text(size=15),
         axis.title=element_text(size=20),
         legend.text=element_text(size=15),
         legend.title=element_text(size=20))
+dev.off()
+
+png("~/Writing/Figures/NurseLarva/Fig1.png",width=3000,height=3000,res=300)
+grid.arrange(p1,p2,p3,p4,nrow=2,ncol=2)
 dev.off()
 
 df$SIL = df$Lbetween - df$Lwithin
@@ -165,12 +172,29 @@ d2$connection.type = "within"
 d2$connection.type[grepl("between",d2$variable)]="between"
 d3 <- dcast(d2, PS2+tissue+Gene+midF ~ connection.type)
 
+d4 <- ddply(dfAll,~PS2,summarise,
+            meanSI = mean(SI_Overall),
+            c1B = quantile(bootMean(SI_Overall,1000),0.025),
+            c2B = quantile(bootMean(SI_Overall,1000),0.975),
+            meanF = mean(midF),
+            c1W = quantile(bootMean(midF,1000),0.025),
+            c2W = quantile(bootMean(midF,1000),0.975))
 
+p3 <- ggplot(d4,aes(x=meanSI,y=meanF,color=PS2))+
+  geom_point(size=3)+
+  geom_errorbarh(aes(xmin=c1B,xmax=c2B))+
+  geom_errorbar(aes(ymin=c1W,ymax=c2W))+
+  theme_bw()+xlab("Social Index")+ylab("Neutrality")+
+  scale_color_manual(values=cbbPalette)+
+  theme(axis.text=element_text(size=15),
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=15),
+        legend.title=element_text(size=20))
 d3$SI = d3$between - d3$within
 d3 = d3[!is.na(d3$PS2),]
 d3$PS2 = factor(d3$PS2,levels = c("cellular","eukaryote","bilaterian","insect","hymenopteran_ant"))
 png("~/Writing/Figures/NurseLarva/Fig2.png",width=3000,height=3000,res=300)
-ggplot(d3[!is.na(d3$PS2),],aes(x=tissue,y=SI,fill=PS2))+geom_boxplot()+
+p1 <- ggplot(d3[!is.na(d3$PS2),],aes(x=tissue,y=SI,fill=PS2))+geom_boxplot()+
   theme_bw()+ylab("sociality index")+
   scale_fill_manual(values=cbbPalette)+
   theme(axis.text=element_text(size=15),
@@ -178,12 +202,6 @@ ggplot(d3[!is.na(d3$PS2),],aes(x=tissue,y=SI,fill=PS2))+geom_boxplot()+
         legend.text=element_text(size=15),
         legend.title=element_text(size=20))
 dev.off()
-  
-lm <- glm(SIWG ~ PS2, data=dfAll) 
-summary(glht(lm, mcp(PS2="Tukey"))) 
-
-
-ggplot(dfAll,aes(x=SIWH,y=SIWG,color=PS2))+geom_point()
 
 d4 <- ddply(dfAll,~PS2,summarise,
             meanWG = mean(SIWG),
@@ -194,11 +212,11 @@ d4 <- ddply(dfAll,~PS2,summarise,
             c2W = quantile(bootMean(SIWH,1000),0.975))
 
 png("~/Writing/Figures/NurseLarva/Fig2b.png",width=3000,height=3000,res=300)
-ggplot(d4[!is.na(d4$PS2),],aes(x=meanWG,y=meanWH,color=PS2))+
+p2 <- ggplot(d4[!is.na(d4$PS2),],aes(x=meanWG,y=meanWH,color=PS2))+
   geom_point(size=3)+
   geom_errorbarh(aes(xmin=c1B,xmax=c2B))+
   geom_errorbar(aes(ymin=c1W,ymax=c2W))+
-  theme_bw()+
+  theme_bw()+xlab("WG sociality")+ylab("WH sociality")+
   scale_color_manual(values=cbbPalette)+
   theme(axis.text=element_text(size=15),
         axis.title=element_text(size=20),
@@ -206,36 +224,45 @@ ggplot(d4[!is.na(d4$PS2),],aes(x=meanWG,y=meanWH,color=PS2))+
         legend.title=element_text(size=20))
 dev.off()
 
+png("~/Writing/Figures/NurseLarva/Fig2both.png",width=3000,height=3000,res=300)
+grid.arrange(p1,p2)
+dev.off()
+
 png("~/Writing/Figures/NurseLarva/Fig3a.png",width=3000,height=3000,res=300)
-ggplot(dfAll[!is.na(dfAll$PS2),],aes(x=SIWH,y=midF,color=PS2))+geom_point()+theme_bw()+
+p1 <- ggplot(dfAll[!is.na(dfAll$PS2),],aes(x=SIWH,y=midF,color=PS2))+geom_point()+theme_bw()+
   theme(axis.text=element_text(size=15),
         axis.title=element_text(size=20),
         legend.text=element_text(size=15),
-        legend.title=element_text(size=20))+
+        legend.title=element_text(size=20),
+        legend.position = "none")+
   scale_color_manual(values=cbbPalette)+
   ggtitle("cor = 0.11, p = 0.007")
 dev.off()
 
 png("~/Writing/Figures/NurseLarva/Fig3b.png",width=3000,height=3000,res=300)
-ggplot(dfAll[!is.na(dfAll$PS2),],aes(x=SIWG,y=midF,color=PS2))+geom_point()+theme_bw()+
+p2 <- ggplot(dfAll[!is.na(dfAll$PS2),],aes(x=SIWG,y=midF,color=PS2))+geom_point()+theme_bw()+
   theme(axis.text=element_text(size=15),
         axis.title=element_text(size=20),
         legend.text=element_text(size=15),
-        legend.title=element_text(size=20))+
+        legend.title=element_text(size=20),legend.position = "top")+
   scale_color_manual(values=cbbPalette)+
   ggtitle("cor = 0.17, p < 0.001")
 dev.off()
 
 png("~/Writing/Figures/NurseLarva/Fig3c.png",width=3000,height=3000,res=300)
-ggplot(dfAll[!is.na(dfAll$PS2),],aes(x=SIL,y=midF,color=PS2))+geom_point()+theme_bw()+
+p3 <- ggplot(dfAll[!is.na(dfAll$PS2),],aes(x=SIL,y=midF,color=PS2))+geom_point()+theme_bw()+
   theme(axis.text=element_text(size=15),
         axis.title=element_text(size=20),
         legend.text=element_text(size=15),
-        legend.title=element_text(size=20))+
+        legend.title=element_text(size=20),
+        legend.position = "none")+
   scale_color_manual(values=cbbPalette)+
   ggtitle("cor = 0.123, p = 0.002")
 dev.off()
 
+png("~/Writing/Figures/NurseLarva/Fig3all.png",width=3000,height=1500,res=300)
+grid.arrange(p1,p2,p3,nrow=1)
+dev.off()
 ####
 ##Fig 4: relationship between f and d
 d = droplevels(dfAll[!is.na(dfAll$PS2),])
@@ -292,7 +319,7 @@ d = d[!is.na(d$PS2),]
 d$PS2 = factor(d$PS2, levels = c("cellular","eukaryote","bilaterian","insect","hymenopteran_ant"))
 
 png("~/Writing/Figures/NurseLarva/Fig5a.png",width=3000,height=3000,res=300)
-ggplot(d,aes(x=QH,y=SIWH,color=PS2))+geom_point()+
+p1 <- ggplot(d,aes(x=QH,y=SIWH,color=PS2))+geom_point(size=2)+
   scale_color_manual(values=cbbPalette)+
   theme_bw()+
   ylab("nurse head sociality index")+xlab("queen head normalized expression")+
@@ -303,7 +330,7 @@ ggplot(d,aes(x=QH,y=SIWH,color=PS2))+geom_point()+
 dev.off()
 
 png("~/Writing/Figures/NurseLarva/Fig5b.png",width=3000,height=3000,res=300)
-ggplot(d,aes(x=QG,y=SIWG,color=PS2))+geom_point()+
+p2 <- ggplot(d,aes(x=QG,y=SIWG,color=PS2))+geom_point(size = 2)+
   scale_color_manual(values=cbbPalette)+
   theme_bw()+
   ylab("nurse gaster sociality index")+xlab("queen gaster normalized expression")+
@@ -313,5 +340,33 @@ ggplot(d,aes(x=QG,y=SIWG,color=PS2))+geom_point()+
         legend.title=element_text(size=20))
 dev.off()
 
+png("~/Writing/Figures/NurseLarva/Fig5all.png",width=3000,height=3000,res=300)
+grid.arrange(p1,p2,ncol=1)
+dev.off()
 
+lm <- glm(log(midF) ~ PS2 + QH + QG + 
+            SIWH + SIWG + SIL,
+          data = d)
 
+d2 <- melt(dfAll[,c(1,30:35,27,48)],id.vars=c("Gene","PS2","midF"))
+d2$tissue="Larva"
+d2$tissue[grepl("WG",d2$variable)]="WorkerGaster"
+d2$tissue[grepl("WH",d2$variable)]="WorkerHead"
+
+d2$connection.type = "within"
+d2$connection.type[grepl("between",d2$variable)]="between"
+d3 <- dcast(d2, PS2+tissue+Gene+midF ~ connection.type)
+
+d4 <- ddply(d3,~PS2 + tissue,summarise,
+            meanB = mean(between),
+            c1B = quantile(bootMean(between,1000),0.025),
+            c2B = quantile(bootMean(between,1000),0.975),
+            meanF = mean(within),
+            c1W = quantile(bootMean(within,1000),0.025),
+            c2W = quantile(bootMean(within,1000),0.975))
+
+ggplot(d4,aes(x=meanB,y=meanF,color=PS2,shape=tissue))+
+  geom_point(size=3)+
+  geom_errorbar(aes(ymin=c1W,ymax=c2W))+
+  geom_errorbarh(aes(xmin=c1B,xmax=c2B))+
+  xlab("between")+ylab("within")
