@@ -2,7 +2,7 @@
 library(plyr)
 
 #Load in results of networks with top 1000 connected genes
-setwd("~/Results")
+setwd("~/Results/bigboots/")
 
 collate <- function(name){
   files <- list.files(pattern=paste(name,".*RData",sep=""))
@@ -40,8 +40,8 @@ collate <- function(name){
     WRsoc$WHbetween[i] = mean(d$meanW[(grepl("Larv",d$target.gene))&grepl("NurseH",d$regulatory.gene)])
     WRsoc$WGwithin[i] = mean(d$meanW[grepl("NurseG",d$target.gene)&grepl("NurseG",d$regulatory.gene)])
     WRsoc$WGbetween[i] = mean(d$meanW[(grepl("Larv",d$target.gene))&grepl("NurseG",d$regulatory.gene)])
-    WRsoc$WH.WG[i] = mean(d$meanW[(grepl("NurseH",d$target.gene))&grepl("NurseG",d$regulatory.gene)])
-    WRsoc$WG.WH[i] = mean(d$meanW[(grepl("NurseG",d$target.gene))&grepl("NurseH",d$regulatory.gene)])
+    WRsoc$WG.WH[i] = mean(d$meanW[(grepl("NurseH",d$target.gene))&grepl("NurseG",d$regulatory.gene)])
+    WRsoc$WH.WG[i] = mean(d$meanW[(grepl("NurseG",d$target.gene))&grepl("NurseH",d$regulatory.gene)])
     }
   write.csv(WRsoc,paste(name,"NetSocialityDF.csv",sep=""))
 }
