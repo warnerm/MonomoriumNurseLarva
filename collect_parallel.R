@@ -2,7 +2,7 @@
 library(plyr)
 
 #Load in results of networks with top 1000 connected genes
-setwd("~/Results/bigboots/")
+setwd("~/Results/bigboot/")
 
 collate <- function(name){
   files <- list.files(pattern=paste(name,".*RData",sep=""))
