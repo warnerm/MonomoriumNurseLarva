@@ -158,9 +158,35 @@ df$SIWG = df$WGbetween - df$WGwithin
 df$SI_Overall = (df$SIL + df$SIWH + df$SIWG)/3
 df$SIW = ((df$SIWH+df$SIWG)/2+df$SIL)/2
 
+p1 <- ggplot(df,aes(x=SIL))+geom_histogram(binwidth=0.005)+
+  theme_bw()+xlab("Larvae")+xlim(-0.15,0.15)+
+  theme(axis.text=element_text(size=15),
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=15),
+        legend.title=element_text(size=20))
+  
+p2 <- ggplot(df,aes(x=SIWH))+geom_histogram(binwidth=0.005)+
+  theme_bw()+xlab("Nurse Head")+xlim(-0.15,0.15)+
+  theme(axis.text=element_text(size=15),
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=15),
+        legend.title=element_text(size=20))
+
+p3 <- ggplot(df,aes(x=SIWG))+geom_histogram(binwidth=0.005)+
+  theme_bw()+xlab("Nurse Gaster")+xlim(-0.15,0.15)+
+  theme(axis.text=element_text(size=15),
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=15),
+        legend.title=element_text(size=20))
+
+png("~/Writing/Figures/NurseLarva/FigS1.png",width=3000,height=3000,res=300)
+grid.arrange(p1,p2,p3,nrow=3,ncol=1)
+dev.off()
+
 dfAll = merge(ext,df,by.x="Gene",by.y="gene")
 dfAll = merge(dfAll,sn,by.x="Gene",by.y="gene")
 dfAll$PS2 = factor(dfAll$PS2, levels = c("cellular","eukaryote","bilaterian","insect","hymenopteran_ant"))
+levels(dfAll$PS2) = rev(levels(dfAll$PS2))
 
 dfAll$midF = (dfAll$f.est+dfAll$BSnIPRE.f)/2
 dfAll = dfAll[!is.na(dfAll$PS2),]
@@ -172,24 +198,29 @@ d2$connection.type = "within"
 d2$connection.type[grepl("between",d2$variable)]="between"
 d3 <- dcast(d2, PS2+tissue+Gene+midF ~ connection.type)
 
+
 d4 <- ddply(dfAll,~PS2,summarise,
             meanSI = mean(SI_Overall),
             c1B = quantile(bootMean(SI_Overall,1000),0.025),
             c2B = quantile(bootMean(SI_Overall,1000),0.975),
-            meanF = mean(midF),
-            c1W = quantile(bootMean(midF,1000),0.025),
-            c2W = quantile(bootMean(midF,1000),0.975))
-
-p3 <- ggplot(d4,aes(x=meanSI,y=meanF,color=PS2))+
-  geom_point(size=3)+
+            meanF = mean(1-f.est),
+            c1W = quantile(bootMean(1-f.est,1000),0.025),
+            c2W = quantile(bootMean(1-f.est,1000),0.975))
+d4$PS2 = factor(d4$PS2,levels=rev(levels(d4$PS2)))
+pdf("~/Documents/constraintPS2.pdf",height=9,width=9)
+ggplot(d4[!is.na(d4$PS2),],aes(x=meanSI,y=meanF,color=PS2))+
+  geom_point(size=5)+
   geom_errorbarh(aes(xmin=c1B,xmax=c2B))+
   geom_errorbar(aes(ymin=c1W,ymax=c2W))+
-  theme_bw()+xlab("Social Index")+ylab("Neutrality")+
-  scale_color_manual(values=cbbPalette)+
+  theme_bw()+xlab("average sociality index")+ylab("constraint")+
+  scale_color_hue(h=c(300,360),name="phylostrata")+
   theme(axis.text=element_text(size=15),
         axis.title=element_text(size=20),
         legend.text=element_text(size=15),
-        legend.title=element_text(size=20))
+        legend.title=element_text(size=20),
+        legend.position="bottom")+
+  theme(plot.margin=unit(c(1,1,1,0.5),"cm"))
+dev.off()
 d3$SI = d3$between - d3$within
 d3 = d3[!is.na(d3$PS2),]
 d3$PS2 = factor(d3$PS2,levels = c("cellular","eukaryote","bilaterian","insect","hymenopteran_ant"))
@@ -263,6 +294,156 @@ dev.off()
 png("~/Writing/Figures/NurseLarva/Fig3all.png",width=3000,height=1500,res=300)
 grid.arrange(p1,p2,p3,nrow=1)
 dev.off()
+
+dM <- melt(dfAll[,c(1,19,36:38,28,46)],id.vars=c("Gene","f.est","BSnIPRE.f","BSnIPRE.est.x"))
+
+p1 <- ggplot(dM,aes(x=value,y=1-f.est,color=variable))+geom_point()+theme_bw()+
+  theme(axis.text=element_text(size=15),
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=15),
+        legend.title=element_text(size=20),
+        legend.position = "top")+
+  xlab("sociality index")+
+  ylab("constraint (MK test)")+
+  scale_color_manual(values=cbbPalette,name="tissue")
+p2 <- ggplot(dM,aes(x=value,y=1-BSnIPRE.f,color=variable))+geom_point()+theme_bw()+
+  xlab("sociality index")+
+  ylab("constraint (snipre)")+
+  theme(axis.text=element_text(size=15),
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=15),
+        legend.title=element_text(size=20),
+        legend.position = "top")+
+  scale_color_manual(values=cbbPalette,name="tissue")
+
+levels(dfAll$PS2)[5] = c("hymenopteran")
+
+p3 <- ggplot(dfAll,aes(x=SI_Overall,y=1-f.est,color=PS2))+
+  geom_point()+theme_bw()+
+  xlab("sociality index, overall")+
+  ylab("constraint (MK test)")+
+  theme(axis.text=element_text(size=15),
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=15),
+        legend.title=element_text(size=20),
+        legend.position = "top")+
+  scale_color_manual(values=cbbPalette,name="PS2")
+
+pdf("SI_MK.ps.pdf")
+p3+stat_smooth(method="lm",se=FALSE)
+dev.off()
+p4 <- ggplot(dfAll,aes(x=SI_Overall,y=1-BSnIPRE.f,color=PS2))+
+  geom_point()+theme_bw()+
+  xlab("sociality index, overall")+
+  ylab("constraint (snipre)")+
+  theme(axis.text=element_text(size=15),
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=15),
+        legend.title=element_text(size=20),
+        legend.position = "top")+
+  scale_color_manual(values=cbbPalette,name="PS2")
+
+pdf("SI_snipre.ps.pdf")
+p4+stat_smooth(method="lm",se=FALSE)
+dev.off()
+
+pdf("SI_MK.pdf")
+ggplot(dfAll,aes(x=SI_Overall,y=1-f.est))+
+  geom_point()+theme_bw()+
+  xlab("sociality index, overall")+
+  ylab("constraint (MK test)")+
+  theme(axis.text=element_text(size=15),
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=15),
+        legend.title=element_text(size=20),
+        legend.position = "top")+
+  stat_smooth(method="lm",se=FALSE)
+dev.off()
+
+pdf("SI_snipre.pdf")
+ggplot(dfAll,aes(x=SI_Overall,y=1-BSnIPRE.f))+
+  geom_point()+theme_bw()+
+  xlab("sociality index, overall")+
+  ylab("constraint (MK test)")+
+  theme(axis.text=element_text(size=15),
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=15),
+        legend.title=element_text(size=20),
+        legend.position = "top")+
+  stat_smooth(method="lm",se=FALSE)
+dev.off()
+
+
+pdf("SI_est.pdf")
+ggplot(dfAll,aes(x=SI_Overall,y=BSnIPRE.est.x))+
+  geom_point()+theme_bw()+
+  xlab("sociality index, overall")+
+  ylab("selection (.est)")+
+  theme(axis.text=element_text(size=15),
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=15),
+        legend.title=element_text(size=20),
+        legend.position = "top")+
+  stat_smooth(method="lm",se=FALSE)
+dev.off()
+
+pdf("SI.est.ps.pdf")
+ggplot(dfAll,aes(x=SI_Overall,y=BSnIPRE.est.x,color=PS2))+
+  geom_point()+theme_bw()+
+  xlab("sociality index, overall")+
+  ylab("selection (.est)")+
+  theme(axis.text=element_text(size=15),
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=15),
+        legend.title=element_text(size=20),
+        legend.position = "top")+
+  scale_color_manual(values=cbbPalette,name="PS2")
+dev.off()
+d4 <- ddply(dfAll,~PS2,summarise,
+            meanSI = mean(SI_Overall),
+            c1B = quantile(bootMean(SI_Overall,1000),0.025),
+            c2B = quantile(bootMean(SI_Overall,1000),0.975),
+            meanf1 = mean(1-BSnIPRE.f),
+            c1fB = quantile(bootMean(1-BSnIPRE.f,1000),0.025),
+            c2fB = quantile(bootMean(1-BSnIPRE.f,1000),0.975),
+            meanf2 = mean(1-f.est),
+            c1fM = quantile(bootMean(1-f.est,1000),0.025),
+            c2fM = quantile(bootMean(1-f.est,1000),0.975))
+
+p5 <- ggplot(d4[!is.na(d4$PS2),],aes(x=meanSI,y=meanf2,color=PS2))+
+  geom_point(size=3)+
+  geom_errorbarh(aes(xmin=c1B,xmax=c2B))+
+  geom_errorbar(aes(ymin=c1fM,ymax=c2fM))+
+  theme_bw()+xlab("overall sociality")+ylab("constraint (MK test)")+
+  scale_color_manual(values=cbbPalette)+
+  theme(axis.text=element_text(size=15),
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=15),
+        legend.title=element_text(size=20),legend.position="bottom")
+
+p6 <- ggplot(d4[!is.na(d4$PS2),],aes(x=meanSI,y=meanf1,color=PS2))+
+  geom_point(size=3)+
+  geom_errorbarh(aes(xmin=c1B,xmax=c2B))+
+  geom_errorbar(aes(ymin=c1fB,ymax=c2fB))+
+  theme_bw()+xlab("overall sociality")+ylab("constraint (snipre)")+
+  scale_color_manual(values=cbbPalette)+
+  theme(axis.text=element_text(size=15),
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=15),
+        legend.title=element_text(size=20),
+        legend.position="bottom")
+
+png("~/Writing/Figures/NurseLarva/Fig3alt.png",width=3000,height=4000,res=300)
+grid.arrange(p1,p2,p3,p4,p5,p6,nrow=3,ncol=2)
+dev.off()
+
+dT = dM[dM$variable=="SIWG",]
+cor.test(dT$value,dT$BSnIPRE.est.x)
+dT$quarter = 1
+dT$quarter[dT$value>quantile(dT$value,0.25)]=2
+dT$quarter[dT$value>quantile(dT$value,0.5)]=3
+dT$quarter[dT$value>quantile(dT$value,0.75)]=4
+lm <- glm(BSnIPRE.est.x ~ quarter,data=dT)
 ####
 ##Fig 4: relationship between f and d
 d = droplevels(dfAll[!is.na(dfAll$PS2),])
@@ -370,3 +551,5 @@ ggplot(d4,aes(x=meanB,y=meanF,color=PS2,shape=tissue))+
   geom_errorbar(aes(ymin=c1W,ymax=c2W))+
   geom_errorbarh(aes(xmin=c1B,xmax=c2B))+
   xlab("between")+ylab("within")
+
+

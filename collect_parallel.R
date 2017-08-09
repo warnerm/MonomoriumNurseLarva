@@ -2,7 +2,7 @@
 library(plyr)
 
 #Load in results of networks with top 1000 connected genes
-setwd("~/Results/bigboot/")
+setwd("~/Results/")
 
 collate <- function(name){
   files <- list.files(pattern=paste(name,".*RData",sep=""))
@@ -14,7 +14,7 @@ collate <- function(name){
   }
   print(head(WorkerRes))
   #Calculate pairwise mean connection values
-  WRsum = ddply(WorkerRes,~regulatory.gene + target.gene,summarize,
+  WRsum = ddply(WorkerRes,~regulatory.gene + target.gene,summarize,parallel=TRUE,
                 N = length(weight),
                 meanW = mean(weight))
   WRsum = WRsum[order(WRsum$meanW,decreasing=TRUE),]
@@ -47,11 +47,4 @@ collate <- function(name){
 }
 
 collate("TopExprWorkerNet")
-collate("TopExprSexualNet")
-collate("TopExprRandomNet")
-
-#collate("TopConnWorkerNet")
-#collate("TopConnSexualNet")
-#collate("TopConnRandomNet")
-
 
