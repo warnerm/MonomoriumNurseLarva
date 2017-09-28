@@ -6,6 +6,7 @@ setwd("~/Results/")
 
 collate <- function(name){
   files <- list.files(pattern=paste(name,".*RData",sep=""))
+  WorkerRes = list()
   for (i in 1:length(files)){
     load(files[i])
     WorkerRes[[i]] = ddply(Results,~regulatory.gene + target.gene,summarize,parallel=TRUE,
