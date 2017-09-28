@@ -6,32 +6,24 @@ setwd("~/Results/")
 
 collate <- function(name){
   files <- list.files(pattern=paste(name,".*RData",sep=""))
-  load(files[1])
-  WorkerRes = Results
-  for (i in 2:length(files)){
+  for (i in 1:length(files)){
     load(files[i])
-    WorkerRes = rbind(WorkerRes,Results)
+    WorkerRes[[i]] = ddply(Results,~regulatory.gene + target.gene,summarize,parallel=TRUE,
+                           N = length(weight),
+                           meanW = mean(weight))
   }
-  print(head(WorkerRes))
+  WorkerRes = ldply(WorkerRes,data.frame)
   #Calculate pairwise mean connection values
   WRsum = ddply(WorkerRes,~regulatory.gene + target.gene,summarize,parallel=TRUE,
-                N = length(weight),
-                meanW = mean(weight))
+                N = sum(N),
+                meanW = mean(meanW))
   WRsum = WRsum[order(WRsum$meanW,decreasing=TRUE),]
-  WRsum$regT = WRsum$targT = "Larva"
-  WRsum$regT[!grepl("Larv",WRsum$regulatory.gene)]="Worker"
-  WRsum$targT[!grepl("Larv",WRsum$target.gene)]="Worker"
-  betWR = WRsum[WRsum$regT!=WRsum$targT,]
-  betWR = betWR[c(1:10000),]
-  write.csv(betWR,file=paste(name,"TopConns.csv",sep=""))
-  print(head(WRsum))
-  WRsum$targReg =with(WRsum,paste0(regulatory.gene,target.gene))
-  #Calculate "socialility index" as mean conn outside individual - mean conn inside tissue
-  
-  #write.csv(WRsum,file=paste(name,"WRsum.csv",sep=""))
+  stat <- c(mean(WRsum$N),ci1=quantile(WRsum$N,0.025),ci2=quantile(WRsum$N,0.975))
+  write.csv(WRsum,"CompiledConnections.csv")
+  write.table(stat,"MeanNumberConns.txt")
+
   WRsoc = data.frame(gene = unique(gsub(".*_","",WRsum$regulatory.gene)))
-  WRsoc$Lwithin=WRsoc$Lbetween=WRsoc$WHwithin=WRsoc$WHbetween=WRsoc$WGwithin=WRsoc$WGbetween=0
-  WRsocMax = WRsoc
+  WRsoc$Lwithin=WRsoc$Lbetween=WRsoc$WHwithin=WRsoc$WHbetween=WRsoc$WGwithin=WRsoc$WGbetween=WRsoc$nNet=0
   for (i in 1:nrow(WRsoc)){
     d = WRsum[grepl(WRsoc$gene[i],WRsum$regulatory.gene),]
     WRsoc$Lwithin[i] = mean(d$meanW[grepl("Larv",d$target.gene)&grepl("Larv",d$regulatory.gene)])
@@ -42,8 +34,9 @@ collate <- function(name){
     WRsoc$WGbetween[i] = mean(d$meanW[(grepl("Larv",d$target.gene))&grepl("NurseG",d$regulatory.gene)])
     WRsoc$WG.WH[i] = mean(d$meanW[(grepl("NurseH",d$target.gene))&grepl("NurseG",d$regulatory.gene)])
     WRsoc$WH.WG[i] = mean(d$meanW[(grepl("NurseG",d$target.gene))&grepl("NurseH",d$regulatory.gene)])
-    }
-  write.csv(WRsoc,paste(name,"NetSocialityDF.csv",sep=""))
+    WRsoc$nNet[i] = nrow(d)  
+  }
+  write.csv(WRsoc,paste(name,"SocialityDF.csv",sep=""))
 }
 
 collate("TopExprWorkerNet")

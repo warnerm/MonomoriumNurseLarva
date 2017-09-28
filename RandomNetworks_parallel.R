@@ -36,7 +36,6 @@ runGenie <- function(run){
   setwd("~/GENIE3_R_C_wrapper")
   source("~/GENIE3_R_C_wrapper/GENIE3.R")
   Results = list()
-  library(plyr)
   i = 1
   while (i <= bootsPerCore){
     Genes = sample(rownames(input),nGene,replace=F) #Pick random genes
@@ -48,7 +47,7 @@ runGenie <- function(run){
     }
   }
   Results = ldply(Results)
-  save(Results,file=paste("~/Results/bigboot/",name,run,"GenieParallel.RData",sep=""))
+  save(Results,file=paste("~/Results/",name,run,"GenieParallel.RData",sep=""))
   return()
 }
 
@@ -83,7 +82,7 @@ getNsamp <- function(codes,stage){
   return(min(nSamp))
 }
 
-boots = 10000000
+boots = 1000000
 nGene = 10
 bootsPerCore = 500
 
@@ -101,46 +100,5 @@ codes = c("W.*_L","C.*WH","C.*WG")
 names = c("WorkLarv","WorkNurseH","WorkNurseG")
 input = setInput(codes,names)
 name = "TopExprWorkerNet"
-RandomNetworks()
-
-codes = c("1LW|LS","1LCH|XH","1LCG|XG")
-names = c("SexLarv","SexNurseH","SexNurseG")
-input = setInput(codes,names)
-name = "TopExprSexualNet"
-RandomNetworks()
-
-codes = c("QW","RH","RG")
-names = c("WorkLarv","RNurseH","RNurseG")
-input = setInput(codes,names)
-name = "TopExprRandomNet"
-RandomNetworks()
-
-load("~/cleandata.RData")
-
-##Sort for 1000 most connected genes to reduce dataset size
-corM = cor(t(fpkm))
-conn = colSums(abs(corM))
-conn = conn[order(conn,decreasing=TRUE)]
-keep = names(conn)[1:1000]
-fpkm = fpkm[rownames(fpkm) %in% keep,]
-
-fpkm = log(fpkm + sqrt(fpkm ^ 2 + 1)) #hyperbolic sine transformation to normalize gene expression data
-
-codes = c("W.*_L","C.*WH","C.*WG")
-names = c("WorkLarv","WorkNurseH","WorkNurseG")
-input = setInput(codes,names)
-name = "TopConnWorkerNet"
-RandomNetworks()
-
-codes = c("1LW|LS","1LCH|XH","1LCG|XG")
-names = c("SexLarv","SexNurseH","SexNurseG")
-input = setInput(codes,names)
-name = "TopConnSexualNet"
-RandomNetworks()
-
-codes = c("QW","RH","RG")
-names = c("WorkLarv","RNurseH","RNurseG")
-input = setInput(codes,names)
-name = "TopConnRandomNet"
 RandomNetworks()
 
