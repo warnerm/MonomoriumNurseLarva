@@ -1,5 +1,5 @@
 #!/bin/bash#
-#SBATCH -p general # partition (queue)
+#SBATCH -p compute* # partition (queue)
 #SBATCH -N 30 # number of nodes
 #SBATCH -n 120 # number of cores
 #SBATCH -t 0-24:00 # time (D-HH:MM)
