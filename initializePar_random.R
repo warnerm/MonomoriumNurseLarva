@@ -8,6 +8,8 @@ totGene <- args[5]
 
 ##Sort for N highest expressed genes to reduce dataset size
 sortData <- function(N,fpkm){
+  rownames(fpkm) = fpkm[,1]
+  fpkm <- fpkm[,-c(1)]
   rowS = rowSums(fpkm)
   keep = rowS[order(rowS,decreasing=TRUE)]
   keep = names(keep)[1:N]

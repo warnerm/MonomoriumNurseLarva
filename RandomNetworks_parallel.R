@@ -1,21 +1,20 @@
 ##RandomNetworks_parallel.R 
 ##this file produces many networks with a randomly chosen set of genes
 ##And then tabulates connection strength between chosen genes across all networks
-#args <- commandArgs(TRUE)
+args <- commandArgs(TRUE)
 #First arg is fpkm, second is factors file, third is sample subset, fourth is number of bootstraps, fifth is number of genes
-#name <- args[1]
+name <- args[1]
 
-name = "worker_1000_1000"
 library(plyr)
 
 load(paste(name,"InitialData.RData",sep="_")) #load initial codes, names, and fpkm
 
 nGene = 10
-bootsPerCore = 500
+bootsPerCore = 1
 
 #This is better than full parallelization so we can deal with the try error
 runGenie <- function(){
-  setwd("~/GENIE3_R_C_wrapper")
+  setwd("~/GENIE3_R_C_wrapper") #Have to switch directories because there are .so files we need
   source("~/GENIE3_R_C_wrapper/GENIE3.R")
   Results = list()
   i = 1
@@ -29,10 +28,10 @@ runGenie <- function(){
     }
   }
   Results = ldply(Results)
-  df <- read.csv(paste(name,"results.csv",sep="_"))
+  df <- read.csv(paste("~/Nurse_Larva/",name,"_results.csv",sep=""))
   df = df[,-c(1)]
   df <- rbind(df,Results)
-  write.csv(df,file=paste(name,"results.csv",sep="_"))
+  write.csv(df,file=paste("~/Nurse_Larva/",name,"_results.csv",sep=""))
   return()
 }
 

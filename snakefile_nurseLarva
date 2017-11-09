@@ -1,6 +1,6 @@
 FPKM = "fpkm.csv"
 BOOTS = 1000 #Increments of 500
-SAMP = ["worker","random"]
+SAMP = "worker"
 NGENES = 1000
 FACTORS = "factors.csv"
 
@@ -13,13 +13,12 @@ rule makeInitial:
 	output: 
 		expand("{SAMP}_{BOOTS}_{NGENES}_InitialData.RData",SAMP=SAMP,BOOTS=BOOTS,NGENES=NGENES),
 		expand("{SAMP}_{BOOTS}_{NGENES}_results.csv",SAMP=SAMP,BOOTS=BOOTS,NGENES=NGENES)
-	shell: "Rscript intialize_parallel.R {FPKM} {FACTORS} {wilcards.SAMP} {BOOTS} {NGENES}"
+	shell: """Rscript initializePar_random.R {FPKM} {FACTORS} {SAMP} {BOOTS} {NGENES}"""
 
 #Run Genie 
 rule runGenie:
-	input: data = expand("{SAMP}_{BOOTS}_{NGENES}_InitialData.RData",SAMP=SAMP,BOOTS=BOOTS,NGENES=NGENES),
-		results = expand("{SAMP}_{BOOTS}_{NGENES}_results.csv",SAMP=SAMP,BOOTS=BOOTS,NGENES=NGENES)
-	output: "expand(keep/{SAMP}_{BOOTS}_{NGENES}_results.csv",SAMP=SAMP,BOOTS=BOOTS,NGENES=NGENES")
-	shell: """python2.7 WrapSlurm.py -f {FPKM} -s {wildcards.SAMP} -b {BOOTS} -n {NGENES}; \
+	input: data = expand("{SAMP}_{BOOTS}_{NGENES}_InitialData.RData",SAMP=SAMP,BOOTS=BOOTS,NGENES=NGENES), results = expand("{SAMP}_{BOOTS}_{NGENES}_results.csv",SAMP=SAMP,BOOTS=BOOTS,NGENES=NGENES)
+	output: expand("keep/{SAMP}_{BOOTS}_{NGENES}_results.csv",SAMP=SAMP,BOOTS=BOOTS,NGENES=NGENES)
+	shell: """python2.7 WrapSlurm.py -s {SAMP} -b {BOOTS} -n {NGENES}; \
 			mv {input[results]} {output}"""
 	
