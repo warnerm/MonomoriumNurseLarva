@@ -5,6 +5,7 @@ library(reshape2)
 library(gridExtra)
 library(grid)
 library(pBrackets)
+library(ggplot2)
 
 PS_palette = c("#deebf7","#9ecae1","#4292c6","#2171b5","#084594")
 Soc_palette = c("#dadaeb","#9e9ac8","#6a51a3")
@@ -31,8 +32,19 @@ bootMean <- function(data,boots){
   return(res)
 }
 
-df <- read.csv("~/Data/TopExprWorkerNetNetSocialityDF.csv")
+df <- read.csv("~/Data/new/CompiledConnections.csv")
 
+df <- read.csv("~/Data/new/TopExprWorkerNetSocialityDF.csv")
+load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
+exprH = rowSums(fpkm[,grepl("C.*_WH",colnames(fpkm))])/sum(grepl("C.*_WH",colnames(fpkm)))
+exprG = rowSums(fpkm[,grepl("C.*_WG",colnames(fpkm))])/sum(grepl("C.*_WG",colnames(fpkm)))
+exprL = rowSums(fpkm[,grepl("W_L",colnames(fpkm))])/sum(grepl("W_L",colnames(fpkm)))
+exprQH = rowSums(fpkm[,grepl("_QH",colnames(fpkm))])/sum(grepl("_QH",colnames(fpkm)))
+exprQG = rowSums(fpkm[,grepl("_QG",colnames(fpkm))])/sum(grepl("_QG",colnames(fpkm)))
+expr = data.frame(exprH=exprH,exprG=exprG,exprL=exprL,
+                  exprQH=exprQH,exprQG=exprQG,gene=names(exprH))
+
+df = df[,c(1,2,4:11)]
 df$SIL = df$Lbetween - df$Lwithin
 df$SIWH = df$WHbetween - df$WHwithin
 df$SIWG = df$WGbetween - df$WGwithin
@@ -40,35 +52,43 @@ df$SI_Overall = (df$SIL + df$SIWH + df$SIWG)/3
 df$SIWH_worker = df$WH.WG - df$WHwithin
 df$SIWG_worker = df$WG.WH - df$WGwithin
 
-d2 <- melt(df[,c(2:10)],id.vars="gene")
+df <- merge(df,expr,by="gene")
+dfAll = df
+
+d2 <- melt(df[,c(1,3:11)],id.vars="gene")
 d2$tissue="larva"
 d2$tissue[grepl("^WG",d2$variable)]="nurse gaster"
 d2$tissue[grepl("^WH",d2$variable)]="nurse head"
 d2$connection.type = "within tissue"
 d2$connection.type[grepl("between",d2$variable)]="social"
 d2$connection.type[grepl("WH.WG",d2$variable)|grepl("WG.WH",d2$variable)]="between tissue"
+d2$connection.type=factor(d2$connection.type,levels=c("within tissue","social","between tissue"))
 
-p1 <- ggplot(d2,aes(x=tissue,y=value,fill=connection.type))+
+p1 <- ggplot(d2,aes(x=connection.type,y=value,fill=tissue))+
   geom_boxplot(notch=TRUE)+
-  theme_bw()+xlab("tissue")+ylab("connection strength")+
-  scale_fill_manual(values=Soc_palette,name="connection type")+
-  theme(axis.text=element_text(size=17),
-        axis.title=element_text(size=23),
+  theme_bw()+xlab("connection type")+ylab("connection strength")+
+  scale_fill_manual(values=Soc_palette,name="tissue")+
+  theme(axis.text=element_text(size=21),
+        axis.title=element_text(size=25),
         axis.title.x=element_text(margin=margin(t=10,r=0,b=0,l=0)),
         axis.title.y=element_text(margin=margin(t=0,r=10,b=0,l=0)),
-        legend.text=element_text(size=14),
-        legend.title=element_text(size=17),
+        legend.text=element_text(size=20),
+        legend.title=element_text(size=23),
         legend.position = c(.05, .98),
-                  legend.justification = c("left", "top"),
+        legend.justification = c("left", "top"),
         legend.box.just = "left",
         legend.margin = margin(6, 6, 6, 6),
         legend.background=element_rect(fill=FALSE))+
-  ylim(0,0.25)
-
+  ylim(0,0.25)+
+  guides(fill=guide_legend(
+    keywidth=0.2,
+    keyheight=0.30,
+    default.unit="inch")
+  )
 png("~/Writing/Figures/NurseLarva/Fig1.png",width=3000,height=3000,res=300)
 p1
 dev.off()
-  
+
 p2 <- ggplot(df,aes(x=WHwithin,y=WHbetween))+geom_point(size=0.7)+
   theme_bw()+xlab("")+geom_smooth(method="lm",se=FALSE,color="red")+
   ylab("")+geom_abline(slope=1,linetype="dashed")+xlim(0,0.25)+ylim(0,0.25)+
@@ -216,9 +236,9 @@ p1 <- ggplot(dfAll,aes(x=SIWH,y=1-f.est))+
         legend.text=element_text(size=15),
         legend.title=element_text(size=20),
         legend.position = "none")+
-  ggtitle("A. nurse head")+
+  ggtitle("nurse head")+
   geom_smooth(method="lm",se=FALSE,color="red")+
-  annotate("text",x=-0.065,y=0.25,label="r = 0.110\np = 0.007",size=5)
+  annotate("text",x=-0.065,y=0.25,label="r = - 0.129\np = 0.001",size=5)
 
 p2 <- ggplot(dfAll,aes(x=SIWG,y=1-f.est))+
   geom_point(size=0.8)+
@@ -228,8 +248,8 @@ p2 <- ggplot(dfAll,aes(x=SIWG,y=1-f.est))+
         legend.text=element_text(size=15),
         legend.title=element_text(size=20),legend.position = "none")+
   geom_smooth(method="lm",se=FALSE,color="red")+
-  ggtitle("B. nurse gaster")+
-  annotate("text",x=-0.08,y=0.25,label="r = 0.170\np < 0.001",size=5)
+  ggtitle("nurse gaster")+
+  annotate("text",x=-0.08,y=0.25,label="r = - 0.131\np = 0.001",size=5)
 
 p3 <- ggplot(dfAll,aes(x=SIL,y=1-f.est))+
   geom_point(size=0.8)+
@@ -240,8 +260,8 @@ p3 <- ggplot(dfAll,aes(x=SIL,y=1-f.est))+
         legend.title=element_text(size=20),
         legend.position = "none")+ylab("")+xlab("")+
   geom_smooth(method="lm",se=FALSE,color="red")+
-  ggtitle("C. larva")+
-  annotate("text",x=-0.11,y=0.25,label="r = 0.123\np = 0.002",size=5)
+  ggtitle("larva")+
+  annotate("text",x=-0.11,y=0.25,label="r = - 0.086\np = 0.034",size=5)
 png("~/Writing/Figures/NurseLarva/Fig2.png",width=3000,height=1500,res=300)
 grid.arrange(p1+theme(plot.title=element_text(size=20,hjust=0.5)),
              p2+theme(plot.title=element_text(size=20,hjust=0.5)),
@@ -252,14 +272,14 @@ dev.off()
 
 ###########
 ##Adding phylostrata
-ext <- read.csv("~/Downloads/msx123_Supp (1)/External Database S1.csv")
+ext <- read.csv("~/Downloads/msx123_Supp (1)/MpharAnn.csv")
 dfAll = merge(ext,df,by.x="Gene",by.y="gene")
 
 dfAll$PS2 = factor(dfAll$PS2, levels = c("cellular","eukaryote","bilaterian","insect","hymenopteran_ant"))
 dfAll = dfAll[!is.na(dfAll$PS2),]
 levels(dfAll$PS2)[5]="hymenopteran"
 
-lm <- glm(SIL ~ PS2, data=dfAll)
+lm <- glm(SIWH ~ PS2, data=dfAll)
 lm <- glm(SIWG ~ PS2, data=dfAll)
 
 summary(glht(lm, mcp(PS2="Tukey"))) 
@@ -283,6 +303,20 @@ p1 <- ggplot(d2,aes(x=tissue,y=value,fill=PS2))+geom_boxplot(notch=TRUE)+
         legend.title=element_text(size=14),
         legend.position = "right")
 
+png("~/Writing/Figures/NurseLarva/Fig3a.png",width=2500,height=2000,res=300)
+grid.arrange(p1 + theme(axis.text=element_text(size=17),
+                        axis.title=element_text(size=22),
+                        axis.title.x=element_text(margin=margin(13,0,0,0)),
+                        legend.text=element_text(size=15),
+                        legend.title=element_text(size=20),
+                        legend.position = c(.05, .98),
+                        legend.justification = c("left", "top"),
+                        legend.box.just = "left",
+                        legend.margin = margin(6, 6, 6, 6),
+                        legend.background=element_rect(fill=FALSE),
+                        plot.margin=unit(c(0.5,0.5,0.5,0.5),"cm"),
+                        axis.title.y=element_text(margin=margin(0,10,0,0))))
+dev.off()
 
 ##Add f back in so dataframe has sociality, f and PS
 dfAll <- merge(dfAll,f.est,by.x="Gene",by.y="gene")
@@ -303,34 +337,40 @@ p2 <- ggplot(d4[!is.na(d4$PS2),],aes(x=meanSI,y=1-meanF,fill=PS2))+
   scale_fill_manual(values=PS_palette,name="phylostrata")+
   #scale_color_manual(values=PS_palette,name="phylostrata")+
   theme(legend.position="none")+
-  annotate("text",x=-0.055,y=0.925,label="eukaryote",size=5)+
-  annotate("text",x=-0.057,y=0.88,label="bilaterian",size=5)+
-  annotate("text",x=-0.049,y=0.908,label="cellular",size=5)+
-  annotate("text",x=-0.046,y=0.87,label="insect",size=5)+
-  annotate("text",x=-0.040,y=0.845,label="hymenopteran",size=5)
+  annotate("text",x=-0.0545,y=0.925,label="eukaryote",size=6)+
+  annotate("text",x=-0.0578,y=0.879,label="bilaterian",size=6)+
+  annotate("text",x=-0.049,y=0.908,label="cellular",size=6)+
+  annotate("text",x=-0.046,y=0.87,label="insect",size=6)+
+  annotate("text",x=-0.039,y=0.845,label="hymenopteran",size=6)
 
-
+png("~/Writing/Figures/NurseLarva/Fig3b.png",width=2000,height=2000,res=300)
+grid.arrange(p2+theme(plot.margin=unit(c(0.5,1,0.5,0.5),"cm"),
+         axis.text=element_text(size=17),
+         axis.title=element_text(size=22),
+         axis.title.x=element_text(margin=margin(10,0,0,0)),
+         axis.title.y=element_text(margin=margin(0,10,0,0))))
+dev.off()
 
 png("~/Writing/Figures/NurseLarva/Fig3.png",width=4000,height=2000,res=300)
 grid.arrange(p1 + theme(axis.text=element_text(size=15),
-           axis.title=element_text(size=20),
-           axis.title.x=element_text(margin=margin(13,0,0,0)),
-           legend.text=element_text(size=13),
-           legend.title=element_text(size=17),
-           legend.position = c(.05, .98),
-           legend.justification = c("left", "top"),
-           legend.box.just = "left",
-           legend.margin = margin(6, 6, 6, 6),
-           legend.background=element_rect(fill=FALSE),
-           plot.margin=unit(c(0.5,0.5,0.5,0.5),"cm"),
-           axis.title.y=element_text(margin=margin(0,10,0,0)))+
-             annotate("text",x=3,y=0.08,label="A",size=11),
-           p2+theme(plot.margin=unit(c(0.5,0.5,0.5,0.5),"cm"),
-                    axis.text=element_text(size=15),
-                    axis.title=element_text(size=20),
-                    axis.title.x=element_text(margin=margin(10,0,0,0)),
-                    axis.title.y=element_text(margin=margin(0,10,0,0)))+
-             annotate("text",x=-0.04,y=0.95 - 0.02*(3/5),label="B",size=11),nrow=1)
+                        axis.title=element_text(size=20),
+                        axis.title.x=element_text(margin=margin(13,0,0,0)),
+                        legend.text=element_text(size=13),
+                        legend.title=element_text(size=17),
+                        legend.position = c(.05, .98),
+                        legend.justification = c("left", "top"),
+                        legend.box.just = "left",
+                        legend.margin = margin(6, 6, 6, 6),
+                        legend.background=element_rect(fill=FALSE),
+                        plot.margin=unit(c(0.5,0.5,0.5,0.5),"cm"),
+                        axis.title.y=element_text(margin=margin(0,10,0,0)))+
+               annotate("text",x=3,y=0.08,label="A",size=11),
+             p2+theme(plot.margin=unit(c(0.5,0.5,0.5,0.5),"cm"),
+                      axis.text=element_text(size=15),
+                      axis.title=element_text(size=20),
+                      axis.title.x=element_text(margin=margin(10,0,0,0)),
+                      axis.title.y=element_text(margin=margin(0,10,0,0)))+
+               annotate("text",x=-0.04,y=0.95 - 0.02*(3/5),label="B",size=11),nrow=1)
 dev.off()
 
 ####
@@ -346,11 +386,11 @@ cols = c(29:34,37:40)
 for (j in 1:10){
   for (i in 1:5){
     d2 = dfAll[dfAll$PS2==levels(dfAll$PS2)[i],]
-    res= cor.test(d2$f.est,d2[,cols[j]])
+    res= cor.test((1-d2$f.est),d2[,cols[j]])
     corMat[i,j] = res$estimate
     pMat[i,j] = res$p.value
   }
-  res = cor.test(dfAll$f.est,dfAll[,cols[j]])
+  res = cor.test((1-dfAll$f.est),dfAll[,cols[j]])
   corMat[6,j] = res$estimate
   pMat[6,j] = res$p.value
 }
@@ -368,6 +408,8 @@ corMat = t(corMat)
 corM = melt(corMat)
 corP = melt(pMat)
 corM$p.value = corP$value
+corM$logp = -log10(corM$p.value)
+corM$logp[corM$value<0]=-corM$logp[corM$value<0]
 corM$text = apply(round(corM[,c(3,4)],3),1,paste,collapse="\n")
 corM$text[corM$p.value < 0.001]=gsub("\n0","\n<0.001",corM$text[corM$p.value < 0.001])
 
@@ -377,17 +419,17 @@ for (i in 1:5){
 }
 rowN = c(rowN,paste("overall (",nrow(dfAll),")",sep=""))
 
-p <- ggplot(corM,aes(x=Var2,y=factor(Var1)))+geom_tile(aes(fill=value))+
+p <- ggplot(corM,aes(x=Var2,y=factor(Var1)))+geom_tile(aes(fill=logp))+
   geom_text(aes(label=text))+
-  scale_fill_gradient2(name="pearson r",low=muted("blue"),high=muted("red"),mid="white",
-                       limits=c(-0.5,0.5))+
-  xlab("phylostrata")+ylab("connectivity measurement")+
+  scale_fill_gradient2(low="blue",high="red",mid="white")+
+  xlab("")+ylab("")+
   guides(fill= guide_colorbar(barheight=2,
                               barwidth=30,nbin=40,
-                              title.vjust=0.75))+
+                              title=NULL,ticks=FALSE,label=FALSE))+
   theme_bw()+
-  geom_hline(yintercept=3.5,color="black")+
-  geom_hline(yintercept=6.5,color="black")+
+  geom_hline(yintercept=3.5,color="black",size=2.5)+
+  geom_hline(yintercept=6.5,color="black",size=2.5)+
+  geom_vline(xintercept=5.5,color="black",size=1.5,linetype="dashed")+
   scale_y_discrete(labels=colN,expand=c(0,0))+
   scale_x_discrete(labels=rowN,expand=c(0,0))+
   theme(axis.text=element_text(size=15),
@@ -397,8 +439,20 @@ p <- ggplot(corM,aes(x=Var2,y=factor(Var1)))+geom_tile(aes(fill=value))+
         legend.title=element_text(size=18),
         axis.text.x=element_text(angle = 45,hjust=1))
 
+xax = 80
+
 png("~/Writing/Figures/NurseLarva/FigS4.png",width=3000,height=3000,res=300)
-p
+p+theme(plot.margin=unit(c(2,0.5,0.5,2),"cm"),axis.text.x=element_text(margin=margin(10,0,0,0)))
+grid.brackets(xax,295,xax,120,lwd=2,col="red")
+grid.brackets(xax,435,xax,305,lwd=2,col="red")
+grid.brackets(xax,575,xax,445,lwd=2,col="red")
+grid.text("sociality index",x=0.035,y=0.75,rot=90,gp=gpar(fontsize=18,fontface="italic"))
+grid.text("within tissue",x=0.035,y=0.52,rot=90,gp=gpar(fontsize=18,fontface="italic"))
+grid.text("social",x=0.035,y=0.3,rot=90,gp=gpar(fontsize=18,fontface="italic"))
+grid.text("correlation with constraint",x=0.6,y=0.97,gp=gpar(fontsize=18,fontface="bold"))
+grid.text("negative",x=0.355,y=0.93,gp=gpar(fontsize=18))
+grid.text("positive",x=0.865,y=0.93,gp=gpar(fontsize=18))
+grid.text("phyostrata (number of genes)",x=0.55,y=0.025,gp=gpar(fontsize=20))
 dev.off()
 
 ######
@@ -420,10 +474,12 @@ d = merge(dfAll,expr,by="Gene")
 p1 <- ggplot(d,aes(x=QH,y=SIWH,color=PS2))+
   geom_point(aes(fill=PS2),pch=21,color="black",size=1.5)+
   theme_bw()+
+  annotate("text",x=40,y=0.05,label="***",size=7)+
   ylab("nurse head sociality index")+xlab("queen head normalized expression")+
   scale_fill_manual(values=PS_palette,name="phylostrata")+
   ylim(-0.12,0.06)+
   xlim(0,40)+
+  geom_smooth(method="lm",se=FALSE,color="red")+
   theme(axis.text=element_text(size=15),
         axis.title=element_text(size=20),
         axis.title.x=element_text(margin=margin(10,0,0,0)),
@@ -437,6 +493,8 @@ p2 <- ggplot(d,aes(x=QG,y=SIWG,color=PS2))+
   theme_bw()+
   ylim(-0.12,0.06)+
   xlim(0,40)+
+  geom_smooth(method="lm",se=FALSE,color="red")+
+  annotate("text",x=40,y=0.05,label="***",size=7)+
   ylab("nurse gaster sociality index")+xlab("queen gaster normalized expression")+
   scale_fill_manual(values=PS_palette,name="phylostrata")+
   theme(axis.text=element_text(size=15),
@@ -454,21 +512,21 @@ png("~/Writing/Figures/NurseLarva/FigS5.png",width=2500,height=3000,res=300)
 grid.arrange(p1+
                annotate("text",x=16,y=0.06,label="myosin regulatory light chain 2",size=4)+
                geom_segment(aes(x=21,xend=22.9,y=0.055,yend=0.051),
-                                arrow=arrow(length=unit(0.3,"cm")),
-                                color="red")+
+                            arrow=arrow(length=unit(0.3,"cm")),
+                            color="black")+
                annotate("text",x=35,y=0.035,label="cathD",size=4)+
                geom_segment(aes(x=36,xend=38.5,y=0.03,yend=0.02),
                             arrow=arrow(length=unit(0.3,"cm")),
-                            color="red")+
+                            color="black")+
                annotate("text",x=30,y=0.047,label="troponin I",size=4)+
                geom_segment(aes(x=29,xend=27.6,y=0.042,yend=0.02),
                             arrow=arrow(length=unit(0.3,"cm")),
-                            color="red"),
+                            color="black"),
              p2+
                annotate("text",x=7.6,y=-0.1,label="myosin regulatory light chain 2",size=4)+
                geom_segment(aes(x=11.5,xend=13.8,y=-0.09,yend=-0.053),
                             arrow=arrow(length=unit(0.3,"cm")),
-                            color="red"),
+                            color="black"),
              ncol=1)
 dev.off()
 
@@ -480,9 +538,14 @@ annMp <- annMp[!duplicated(annMp$Gene),]
 dA <- merge(d,annMp,by="Gene")
 dATop = dA[dA$QH > 18 &dA$SIWH > 0,]
 
-lm <- glm(log(midF) ~ PS2 + QH + QG + 
-            SIWH + SIWG + SIL,
-          data = d)
+lm <- glm(log(f.est) ~ PS2 + SIWH + exprQG + exprH + exprG,
+          data = dfAll)
+
+lm <- glm(WGwithin~ PS2,data=dfAll)
+
+drop1(lm,.~.,test="Chi") 
+summary(glht(lm, mcp(PS2="Tukey"))) 
+
 
 d2 <- melt(dfAll[,c(1,30:35,27,48)],id.vars=c("Gene","PS2","midF"))
 d2$tissue="Larva"
@@ -560,5 +623,177 @@ for (i in 1:length(GOdat)){
 write.csv(df,file="~/Data/SwissProtbyConn.csv")
 write.csv(df2,file="~/Data/UniProtbyConn.csv")
 
+########
+##conceptual figure
+library(rsvg)
+image <- rsvg("~/Downloads/smaller larva with shadow.svg")
+mult=dim(image)[1]/dim(image)[2]
 
+#yT is the center of the cluster, layD is the number of points on each side of the grid,
+#nGene is number of genes/cluster, rad is proportional to the size of the circle, in terms of proportion of grid
+randCluster <- function(yT,layD,nGene,rad){
+  rad = layD*rad
+  ret = c()
+  angle.inc = 2*pi/nGene
+  for (i in 1:nGene){
+    yadj = floor(sin(i*angle.inc)*rad+0.5)
+    xadj = floor(cos(i*angle.inc)*rad+0.5)
+    adj = yT+xadj+yadj*layD
+    ret = c(ret,adj)
+  }
+  return(ret)
+}
+
+
+library(igraph)
+nGene = 5
+nGT = nGene*3
+Soc_palette = c("#dadaeb","#9e9ac8","#6a51a3")
+
+
+links <- data.frame(tissue1=c(rep(rep(c("larv","wh","wg"),each=nGene),nGT),"not","not"),
+                    tissue2=c(rep(c("larv","wh","wg"),each=nGene*nGT),"not","not"),
+                    ID1=paste("gene",c(rep(1:nGT,each=nGT),nGT+1,nGT+2)),
+                    ID2=paste("gene",c(rep(seq(1:nGT),nGT),nGT+1,nGT+2)),weight=c(rep(rnorm(nGT*nGT,0,1)),5,5),
+                    edgeCol = "gold")
+links$edgeCol=as.character(links$edgeCol)
+links$edgeCol[links$tissue1==links$tissue2]="#6a51a3"
+links$edgeCol[links$tissue1!=links$tissue2]="#dadaeb"
+links$edgeCol[(links$tissue1=="wh"&links$tissue2=="wg")|(links$tissue1=="wg"&links$tissue2=="wh")]="#9e9ac8"
+links$weight[links$tissue1==links$tissue2]=rnorm(sum(links$tissue1==links$tissue2),0.9,1)
+
+
+##Trim number of connections
+keep1 = links[sample(rownames(links[links$edgeCol=="#6a51a3",]),24),]
+keep2 = links[sample(rownames(links[links$edgeCol=="#dadaeb",]),5),]
+keep3 = links[sample(rownames(links[links$edgeCol=="#9e9ac8",]),5),]
+keep = rbind(keep1,keep2,keep3)
+keep = keep[keep$ID1!=keep$ID2,]
+missing = unique(links$ID1)[!unique(links$ID1) %in% c(as.character(keep$ID1),as.character(keep$ID2))]
+for (gene in missing){
+  keep = rbind(keep,links[sample(rownames(links[links$ID1==gene,]),1),])
+}
+
+keep$lty = "solid"
+keep$lty[keep$edgeCol=="#dadaeb"]="dotted"
+keep$lty[keep$edgeCol=="#9e9ac8"]="dashed"
+keep$curved= FALSE
+keep$curved[keep$edgeCol!="#6a51a3"]=0.2
+keep = keep[,c(3:8)]
+
+nodes <- paste("gene",seq(1:(nGT+2)))
+net <- graph_from_data_frame(d=keep, vertices=nodes, directed=T) 
+
+E(net)$width = rep(3,nrow(keep))
+V(net)$color = rep("black",nGT+2)
+E(net)$edge.color = rep("black",nrow(keep))
+
+net <- simplify(net, remove.multiple = F, remove.loops = T) 
+
+
+######
+##Layout on lattice
+######
+
+layD = 100
+lay <- layout_on_grid(make_lattice( c(layD,layD)))
+lcenter = floor(layD/2)*layD+floor(layD/6)+4
+whcenter = floor(3*layD/4)*layD+floor(3*layD/6)
+wgcenter = floor(3*layD/5)*layD+layD+floor(5*layD/6)+1
+
+larv = randCluster(lcenter,layD,nGene,0.1)
+wh = randCluster(whcenter,layD,nGene,0.1)
+wg = randCluster(wgcenter,layD,nGene,0.1)
+
+layout =lay[c(larv,wh,wg,floor(layD/2),layD*layD-floor(layD/2)),]
+V(net)$size=rep(4,nGT+2)
+V(net)$color=c(rep(c("red","darkblue","lightblue"),each=nGene),"black","black")
+V(net)$shape="square"
+
+plot.new()
+a=heightDetails(grid.text("within-tissue\n",x=0.15,y=0.88,gp=gpar(fontsize=20),just="left"))
+lineh = as.numeric(substr(a,1,6))/8.3 ##8.3 is number of inches the figure is tall
+
+png("~/Writing/Figures/NurseLarva/conceptFig.png",width=2500,height=2500,res=300)
+par(mar=c(0,0,0,0))
+plot(net,edge.color=E(net)$edge.color,edge.arrow.size=0.8,vertex.label=NA,
+     layout=layout,edge.curved=E(net)$curved)
+grid.raster(image,x=.45,y=0.45,width=0.8/mult,height=0.8)
+grid.curve(0.13,0.28,0.04,0.43,curvature=0.2,gp=gpar(lwd=1.5,col="darkgrey"))
+grid.curve(0.2,0.32,0.26,0.48,curvature=-0.1,gp=gpar(lwd=1,col="darkgrey"))
+grid.curve(0.45,0.31,0.37,0.67,curvature=0.2,gp=gpar(lwd=1.5,col="darkgrey"))
+grid.curve(0.53,0.33,0.58,0.7,curvature=-0.2,gp=gpar(lwd=1,col="darkgrey"))
+grid.curve(0.75,0.39,0.7,0.55,curvature=0.2,gp=gpar(lwd=1.5,col="darkgrey"))
+grid.curve(0.85,0.37,0.9,0.5,curvature=-0.2,gp=gpar(lwd=1,col="darkgrey"))
+grid.rect(x=0.45,y=0.05,width=0.1,height=0.05,gp=gpar(col="white"))
+grid.rect(x=0.45,y=0.95,width=0.1,height=0.05,gp=gpar(col="white"))
+grid.text("within-tissue\nbetween-tissue\nsocial",x=0.15,y=0.86,gp=gpar(fontsize=20),just="left")
+grid.lines(x=unit(c(0.04,0.13),"npc"),y=unit(c(0.86+lineh,0.86+lineh),"npc"),gp=gpar(lwd=1.5,lty="solid"))
+grid.lines(x=unit(c(0.04,0.13),"npc"),y=unit(c(0.86,0.86),"npc"),gp=gpar(lwd=1.5,lty="dashed"))
+grid.lines(x=unit(c(0.04,0.13),"npc"),y=unit(c(0.86-lineh,0.86-lineh),"npc"),gp=gpar(lwd=1.5,lty="dotted"))
+grid.text(expression(underline("connection type")),x=0.15,y=0.96,just="left",gp=gpar(fontsize=22,fontface="bold"))
+dev.off()
+
+
+library(rsvg)
+image <- rsvg("~/Downloads/smaller larva with shadow.svg")
+mult=dim(image)[1]/dim(image)[2]
+
+png("~/Writing/Figures/NurseLarva/sepNurseLarv.png",width=2500,height=2500,res=300)
+grid.raster(image,x=.45,y=0.45,width=0.8/mult,height=0.8)
+dev.off()
+
+######
+##Mock phylogeny image
+######
+library(ggdendro)
+d <- matrix(runif(100,0,1),ncol=10)
+hc <- hclust(dist(d))
+dhc <- as.dendrogram(hc)
+ddata <- dendro_data(dhc, type = "rectangle")
+seg = ddata$segments
+for (i in 1:nrow(seg)){
+  if (seg$xend[i]!=seg$x[i]){
+    if (seg$xend[i] > seg$x[i]){
+      seg$xend[i]= seg$xend[i] + 0.065
+    } else {
+      seg$xend[i]= seg$xend[i] - 0.065
+    }
+  }
+}
+ggplot(seg) + 
+  geom_segment(aes(x = x, y = y, xend = xend, yend = yend),color="black",size=2) + 
+  coord_flip()+
+  scale_y_reverse()+
+  xlab("")+ylab("")+
+  theme(panel.background = element_rect(fill="transparent",color=NA),
+        panel.grid.major=element_blank(),
+        panel.grid.minor=element_blank(),
+        plot.background=element_rect(fill="transparent",color=NA),
+        axis.text=element_blank(),
+        axis.ticks=element_blank())
+
+ggsave("~/Writing/Figures/NurseLarva/dummyPhylo.png",bg="transparent")
+
+setwd("~/Writing/Data/NurseSpecialization_transcriptomicData/")
+ogg <- read.csv("ThreeWayOGGMap.csv") #Import 3-way OGG map
+df <- read.csv("Dmel_secreted.csv") #Derived from http://www.flyrnai.org/tools/glad/web/
+df = df[,c(1,2)]
+colnames(df)[2] = "Flybase"
+key <- read.table("DmelKey.txt") #Generated from Drosophila melanogaster gff file
+oggK = merge(ogg,key,by.x="gene_Dmel_FLYBASE",by.y="V1")
+oggS = merge(oggK,df,by.x="V2",by.y="Flybase") #only secreted orthologs
+
+dfAll$secreted = "no"
+dfAll$secreted[dfAll$gene %in% oggS$gene_Mphar] = 'yes'
+
+mean(dfAll$SI_Overall[dfAll$secreted=="no"])
+mean(dfAll$SI_Overall[dfAll$secreted=="yes"])
+
+d = melt(dfAll[,c(1,11:14,22)],id.vars=c("gene","secreted"))
+
+ggplot(d,aes(x=variable,y=value,fill=secreted))+
+  geom_boxplot(notch=TRUE)  
+
+wilcox.test(dfAll$SIWG[dfAll$secreted=='no'],dfAll$SIWG[dfAll$secreted=='yes'])
 

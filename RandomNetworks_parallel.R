@@ -1,7 +1,9 @@
 ##RandomNetworks_parallel.R 
 ##this file produces many networks with a randomly chosen set of genes
 ##And then tabulates connection strength between chosen genes across all networks
-
+args <- commandArgs(TRUE)
+#First arg is fpkm, second is factors file, third is sample subset, fourth is number of bootstraps, fifth is number of genes
+name <- args[1]
 library(parallel)
 library(plyr)
 

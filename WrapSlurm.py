@@ -9,16 +9,27 @@ def InOut(argv):
 	boots = ''
 	totGene = ''
 	try:
-	        opts, args = getopt.getopt(argv,"h:f:s:b:n:",["ffile=","sfile=","bfile=","nfile="])
+	        opts, args = getopt.getopt(argv,"h:s:b:n:",["sfile=","bfile=","nfile="])
 	except getopt.GetoptError:
-	        print 'OGGalign.py -t <threads> -s <seqfile>'
+	        print 'WrapSlurm.py -f <fpkm> -s <samp> -b <totalboots> -n <totGene>'
 	        sys.exit(2)
 	for opt, arg in opts:
-	        if opt in ("-t","--tfile"):
-	                num_cores = arg 
-	        elif opt in ("-s","--sfile"):
-	                seqfile = arg                    
-	return num_cores,seqfile
+	        if opt in ("-s","--sfile"):
+	                samp = arg   
+	        elif opt in ("-b","--bfile"):
+	                boots = arg   
+	        elif opt in ("-n","--nfile"):
+	                nGene = arg                    
+	return samp,boots,nGene
 
-for x in range(1000):
-	call(["sbatch","src/slurmParallel.sh"])
+def main(argv):
+	samp,boots,nGene = InOut(argv)
+	name = samp + '_' + boots + '_' + nGene
+	for x in range(boots/500):
+		call(["sbatch","slurmParallel.sh","name"])
+
+if __name__ == "__main__":
+	main(sys.argv[1:])
+
+
+
