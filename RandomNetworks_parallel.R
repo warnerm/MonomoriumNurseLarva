@@ -5,42 +5,11 @@
 library(parallel)
 library(plyr)
 
-args <- commandArgs(TRUE)
-#First arg is fpkm, second is sample subset, third is number of bootstraps, fourth is number of genes
-fpkm <- read.csv(args[1])
-samp <- args[2]
-boots <- args[3]
-totGene <- args[4]
+load(paste(name,"InitialData.RData",sep="_")) #load initial codes, names, and fpkm
 
 nGene = 10
 bootsPerCore = 500
 
-#Create many random networks for a given sample set
-RandomNetworks <- function(){
-  parallelGenie()
-  return()
-}
-
-#Parallel wrapper for genie function
-parallelGenie <- function(){
-  nReps = floor(boots/bootsPerCore)
- 
-  # Initiate cluster; this only works on linux
-  cl <- makePSOCKcluster(40,
-                         master=system("hostname -i", intern=TRUE))
-  
-  clusterExport(cl = cl, c(
-                  "name","nGene","input","runGenie","bootsPerCore")) ##Must export these variables for parLapply to see them
-  
-  # In parallel, go through all permutations
-  p <- parLapply(cl,1:nReps, function(k) {
-    runGenie(k)
-  })
-  stopCluster(cl)
-  return()
-}
-
-#Run bootsPerCore number of Genie runs on each thread
 #This is better than full parallelization so we can deal with the try error
 runGenie <- function(run){
   setwd("~/GENIE3_R_C_wrapper")
@@ -57,10 +26,14 @@ runGenie <- function(run){
     }
   }
   Results = ldply(Results)
-  save(Results,file=paste("~/NurseLarva_results/",name,run,"GenieParallel.RData",sep=""))
+  df <- read.csv(paste(name,"results.csv",sep="_"))
+  df = df[,-c(1)]
+  df <- rbind(df,Results)
+  write.csv(df,file=paste(name,"results.csv",sep="_"))
   return()
 }
 
+#subset fpkm based on which samples requested, how many genes
 setInput <- function(codes,names){
   AllExpr = list()
   for (i in 1:5){
@@ -92,37 +65,5 @@ getNsamp <- function(codes,stage){
   return(min(nSamp))
 }
 
-##Sort for N highest expressed genes to reduce dataset size
-sortData <- function(N,fpkm){
-  rowS = rowSums(fpkm)
-  keep = rowS[order(rowS,decreasing=TRUE)]
-  keep = names(keep)[1:N]
-  fpkm = fpkm[keep,]
-  fpkm = log(fpkm + sqrt(fpkm ^ 2 + 1)) #hyperbolic sine transformation to normalize gene expression data
-  
-  return(fpkm)
-}
-
-deriveCodes <- function(samp){
-  if (samp=="worker"){
-    codes = c("W.*_L","C.*WH","C.*WG")
-    names = c("WorkLarv","WorkNurseH","WorkNurseG")
-  } else if (samp=="random"){
-    codes = c("QW.*_L","R.*WH","R.*WG")
-    names = c("WorkLarvQR","RandNurseH","RandNurseG")
-  } else if (samp=="forager"){
-    codes = c("W.*_L","F.*WH","F.*WG")
-    names = c("WorkeLarv","ForagerH","ForagerG")
-  } else if (samp=="workerQR"){
-    codes = c("QW.*_L","QCH","QCG")
-    names = c("WorkLarvQR","WorkNurseHQR","WorkNurseGQR")
-  }
-  return(list(codes,names))
-}
-
-c = deriveCodes(samp)
-codes = c[[1]]
-names = c[[2]]
 input <- setInput(codes,names)
-name = paste(samp,boots/1000000,totGene/1000,sep="_")
 RandomNetworks()
