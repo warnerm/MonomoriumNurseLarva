@@ -5,6 +5,16 @@
 library(parallel)
 library(plyr)
 
+args <- commandArgs(TRUE)
+#First arg is fpkm, second is sample subset, third is number of bootstraps, fourth is number of genes
+fpkm <- read.csv(args[1])
+samp <- args[2]
+boots <- args[3]
+totGene <- args[4]
+
+nGene = 10
+bootsPerCore = 500
+
 #Create many random networks for a given sample set
 RandomNetworks <- function(){
   parallelGenie()
@@ -82,23 +92,37 @@ getNsamp <- function(codes,stage){
   return(min(nSamp))
 }
 
-boots = 1000000
-nGene = 10
-bootsPerCore = 500
+##Sort for N highest expressed genes to reduce dataset size
+sortData <- function(N,fpkm){
+  rowS = rowSums(fpkm)
+  keep = rowS[order(rowS,decreasing=TRUE)]
+  keep = names(keep)[1:N]
+  fpkm = fpkm[keep,]
+  fpkm = log(fpkm + sqrt(fpkm ^ 2 + 1)) #hyperbolic sine transformation to normalize gene expression data
+  
+  return(fpkm)
+}
 
-load("~/cleandata.RData")
+deriveCodes <- function(samp){
+  if (samp=="worker"){
+    codes = c("W.*_L","C.*WH","C.*WG")
+    names = c("WorkLarv","WorkNurseH","WorkNurseG")
+  } else if (samp=="random"){
+    codes = c("QW.*_L","R.*WH","R.*WG")
+    names = c("WorkLarvQR","RandNurseH","RandNurseG")
+  } else if (samp=="forager"){
+    codes = c("W.*_L","F.*WH","F.*WG")
+    names = c("WorkeLarv","ForagerH","ForagerG")
+  } else if (samp=="workerQR"){
+    codes = c("QW.*_L","QCH","QCG")
+    names = c("WorkLarvQR","WorkNurseHQR","WorkNurseGQR")
+  }
+  return(list(codes,names))
+}
 
-##Sort for 1000 highest expressed genes to reduce dataset size
-rowS = rowSums(fpkm)
-keep = rowS[order(rowS,decreasing=TRUE)]
-keep = names(keep)[1:1000]
-fpkm = fpkm[keep,]
-
-fpkm = log(fpkm + sqrt(fpkm ^ 2 + 1)) #hyperbolic sine transformation to normalize gene expression data
-
-codes = c("W.*_L","C.*WH","C.*WG")
-names = c("WorkLarv","WorkNurseH","WorkNurseG")
-input = setInput(codes,names)
-name = "TopExprWorkerNet"
+c = deriveCodes(samp)
+codes = c[[1]]
+names = c[[2]]
+input <- setInput(codes,names)
+name = paste(samp,boots/1000000,totGene/1000,sep="_")
 RandomNetworks()
-
