@@ -1,6 +1,7 @@
 #!/usr/local/bin/python2.7
 import subprocess,sys, getopt
 from subprocess import call
+import os
 
 
 def InOut(argv):
@@ -24,8 +25,9 @@ def InOut(argv):
 def main(argv):
 	samp,boots,nGene = InOut(argv)
 	name = samp + '_' + boots + '_' + nGene
-	for x in range(2):
-		call(["sbatch","slurmParallel.sh","export=name=",name])
+	os.environ['name']=name
+	for x in range(int(boots)/100):
+		call(["sbatch","slurmParallel.sh","export=name"])
 
 if __name__ == "__main__":
 	main(sys.argv[1:])

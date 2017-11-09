@@ -10,7 +10,7 @@ library(plyr)
 load(paste(name,"InitialData.RData",sep="_")) #load initial codes, names, and fpkm
 
 nGene = 10
-bootsPerCore = 1
+bootsPerCore = 100
 
 #This is better than full parallelization so we can deal with the try error
 runGenie <- function(){
