@@ -1,6 +1,6 @@
 FPKM = "fpkm.csv"
-BOOTS = 1000000 #Increments of 500
-SAMP = ["worker","random"]
+BOOTS = 500000 #Increments of 500
+SAMP = ["random"]
 NGENES = 1000
 FACTORS = "factors.csv"
 

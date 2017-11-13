@@ -26,7 +26,7 @@ def main(argv):
 	samp,boots,nGene = InOut(argv)
 	name = samp + '_' + boots + '_' + nGene
 	os.environ['name']=name
-	for x in range(int(boots)/100):
+	for x in range(int(boots)/500):
 		call(["sbatch","slurmParallel.sh","export=name"])
 
 if __name__ == "__main__":

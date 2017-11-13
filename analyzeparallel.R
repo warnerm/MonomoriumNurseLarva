@@ -797,3 +797,142 @@ ggplot(d,aes(x=variable,y=value,fill=secreted))+
 
 wilcox.test(dfAll$SIWG[dfAll$secreted=='no'],dfAll$SIWG[dfAll$secreted=='yes'])
 
+####################
+##Trying a purely correlational approach
+####################
+setInput <- function(codes,names,fpkm){
+  AllExpr = list()
+  for (i in 1:5){
+    nSamp = getNsamp(codes,i)
+    expr = list()
+    for (j in 1:length(codes)){
+      f = factors[grepl(codes[j],factors$sample.id)&factors$stage==i,]
+      samps = sample(f$sample.id,nSamp,replace=FALSE) ##Want same number of samples per sample type
+      expr[[j]] = fpkm[,samps]
+      expr[[j]]$tissue=names[j]
+      expr[[j]]$gene = rownames(expr[[j]])
+      expr[[j]]$tissue_gene = with(expr[[j]],paste(tissue,gene,sep="_"))
+      colnames(expr[[j]]) = c(paste("Stage",i,"_",seq(1,nSamp),sep=""),"tissue","gene","tissue_gene")
+    }
+    AllExpr[[i]] = ldply(expr,data.frame)
+    rownames(AllExpr[[i]]) = AllExpr[[i]]$tissue_gene
+    AllExpr[[i]] = AllExpr[[i]][,c(1:nSamp)]
+  }
+  input <- do.call(cbind,AllExpr)
+  return(input)
+}
+
+getNsamp <- function(codes,stage){
+  nSamp = c()
+  for (code in codes){
+    f = factors[grepl(code,factors$sample.id)&factors$stage==stage,]
+    nSamp=c(nSamp,nrow(f))
+  }
+  return(min(nSamp))
+}
+
+deriveCodes <- function(samp){
+  if (samp=="worker"){
+    codes = c("W.*_L","C.*WH","C.*WG")
+    names = c("WorkLarv","WorkNurseH","WorkNurseG")
+  } else if (samp=="random"){
+    codes = c("QW.*_L","R.*WH","R.*WG")
+    names = c("WorkLarvQR","RandNurseH","RandNurseG")
+  } else if (samp=="forager"){
+    codes = c("W.*_L","F.*WH","F.*WG")
+    names = c("WorkeLarv","ForagerH","ForagerG")
+  } else if (samp=="workerQR"){
+    codes = c("QW.*_L","QCH","QCG")
+    names = c("WorkLarvQR","WorkNurseHQR","WorkNurseGQR")
+  }
+  return(list(codes,names))
+}
+
+sortData <- function(N,fpkm,codes){
+  fpkm <- fpkm[,grepl(codes[1],colnames(fpkm))|grepl(codes[2],colnames(fpkm))|grepl(codes[3],colnames(fpkm))]
+  rowS = rowSums(fpkm)
+  keep = rowS[order(rowS,decreasing=TRUE)]
+  keep = names(keep)[1:N]
+  fpkm = fpkm[keep,]
+  fpkm = log(fpkm + sqrt(fpkm ^ 2 + 1)) #hyperbolic sine transformation to normalize gene expression data
+  
+  return(fpkm)
+}
+
+getConns <- function(Ngenes,sample){
+  load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
+  n <- deriveCodes(sample) #returns names, codes
+  fpkm <- sortData(Ngenes,fpkm,n[[1]])
+  d <- setInput(n[[1]],n[[2]],fpkm) #makes meta-sample expression dataframe (genes labeled by individual)
+  cMat <- cor(t(d)) #calculate gene-gene correlation
+  nGene = nrow(fpkm)
+  
+  res <- matrix(nrow=1,ncol=4)
+  for (i in 1:nrow(cMat)){
+    for (j in 1:3){
+      if (i/nGene > j){ #Will iterate over the three blocks (matrix is symetric)
+        next;
+      } else {
+        gene <- gsub(".*_","",rownames(cMat)[i])
+        samp1 <- gsub("_.*","",rownames(cMat)[i])
+        samp2 <- n[[2]][j] #n[[2]] holds the names list
+        cAbs = mean(abs(cMat[i,(nGene*(j-1)+1):(nGene*j)])) #Subset so calculates over one tissue
+        res = rbind(res,c(gene,samp1,samp2,cAbs))
+      }
+    }
+  }
+  
+  res = as.data.frame(res[-c(1),])
+  res$samp = as.factor(do.call(paste,c(res[,c(2,3)],list(sep="_"))))
+  res$V4 = as.numeric(as.character(res$V4))
+  res$V1 = as.character(res$V1)
+  rh = dcast(res[,c(1,4,5)],V1~samp,value.var="V4")
+  colnames(rh)[1] = "gene"
+  return(rh)
+}
+
+rand = getConns(1000,"random")
+work = getConns(1000,"workerQR")
+rand$SIWH=rand$WorkLarvQR_RandNurseH-rand$RandNurseH_RandNurseH
+rand$SIWG=rand$WorkLarvQR_RandNurseG-rand$RandNurseG_RandNurseG
+rand$SIL=(rand$WorkLarvQR_RandNurseH+rand$WorkLarvQR_RandNurseG)/2-rand$WorkLarvQR_WorkLarvQR
+work$SIWH=work$WorkLarvQR_WorkNurseHQR-work$WorkNurseHQR_WorkNurseHQR
+work$SIWG=work$WorkLarvQR_WorkNurseGQR-work$WorkNurseGQR_WorkNurseGQR
+work$SIL=(work$WorkLarvQR_WorkNurseHQR+work$WorkLarvQR_WorkNurseGQR)/2-work$WorkLarvQR_WorkLarvQR
+wilcox.test(rand$SIL,work$SIL,paired=TRUE,alternative="less")
+wilcox.test(rand$SIWH,work$SIWH,paired=TRUE,alternative="less")
+wilcox.test(rand$SIWG,work$SIWG,paired=TRUE,alternative="less")
+wilcox.test(rand$WorkLarvQR_WorkLarvQR,work$WorkLarvQR_WorkLarvQR,paired=TRUE,alternative="less")
+
+
+rh$SIWH = -rh$RandNurseH_RandNurseH + rh$WorkLarvQR_RandNurseH
+rh$SIWG = -rh$RandNurseG_RandNurseG + rh$WorkLarvQR_RandNurseG
+rh$SIL = (rh$WorkLarvQR_RandNurseG+rh$WorkLarvQR_RandNurseH)/2 - rh$WorkLarvQR_WorkLarvQR
+f.est <- read.csv("~/Data/MKtestConstraintOneAlpha.csv")
+colnames(f.est) = c("gene","f.est")
+dfAll <- merge(f.est,rh,by="gene")
+dfAll$SI_Overall = (dfAll$SIWH+dfAll$SIWG+dfAll$SIL)/3
+
+
+
+
+ext <- read.csv("~/Downloads/msx123_Supp (1)/MpharAnn.csv")
+dfAll = merge(ext,rh,by.x="Gene",by.y="gene")
+
+dfAll$PS2 = factor(dfAll$PS2, levels = c("cellular","eukaryote","bilaterian","insect","hymenopteran_ant"))
+dfAll = dfAll[!is.na(dfAll$PS2),]
+levels(dfAll$PS2)[5]="hymenopteran"
+
+ggplot(dfAll,aes(x=PS2,y=SI_Overall))+geom_boxplot(notch=TRUE)
+
+
+lm <- glm(SIWH ~ PS2, data=dfAll)
+lm <- glm(SI_Overall ~ PS2, data=dfAll)
+summary(glht(lm, mcp(PS2="Tukey"))) 
+
+
+ggplot(res,aes(x=samp,y=V4))+
+  geom_boxplot()
+
+res$
+

@@ -6,10 +6,11 @@ samp <- args[3]
 boots <- args[4]
 totGene <- args[5]
 
-##Sort for N highest expressed genes to reduce dataset size
-sortData <- function(N,fpkm){
+##Sort for N highest expressed genes within the given sample set to reduce dataset size
+sortData <- function(N,fpkm,codes){
   rownames(fpkm) = fpkm[,1]
   fpkm <- fpkm[,-c(1)]
+  fpkm <- fpkm[,grepl(codes[1],colnames(fpkm))|grepl(codes[2],colnames(fpkm))|grepl(codes[3],colnames(fpkm))]
   rowS = rowSums(fpkm)
   keep = rowS[order(rowS,decreasing=TRUE)]
   keep = names(keep)[1:N]
@@ -37,8 +38,8 @@ deriveCodes <- function(samp){
   return(list(codes,names))
 }
 
-fpkm <- sortData(totGene,fpkm)
 c = deriveCodes(samp)
+fpkm <- sortData(totGene,fpkm,c[[1]])
 codes = c[[1]]
 names = c[[2]]
 name = paste(samp,boots,totGene,sep="_")
