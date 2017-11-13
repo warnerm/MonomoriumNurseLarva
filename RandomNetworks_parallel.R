@@ -29,7 +29,7 @@ runGenie <- function(run){
     }
   }
   Results = ldply(Results)
-  write.csv(df,file=paste("~/Nurse_Larva/",name,run,"_results.csv",sep=""))
+  write.csv(Results,file=paste("~/Nurse_Larva/",name,"_",run,"_results.csv",sep=""))
   return()
 }
 

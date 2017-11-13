@@ -27,8 +27,8 @@ def main(argv):
 	name = samp + '_' + boots + '_' + nGene
 	os.environ['name']=name
 	for x in range(int(boots)/1000):
-		os.environ['run']=str(x)
-		call(["sbatch","slurmParallel.sh","export=name"])
+		os.environ['run'] = str(x)
+		call(["sbatch","slurmParallel.sh"])
 
 if __name__ == "__main__":
 	main(sys.argv[1:])
