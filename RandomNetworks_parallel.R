@@ -4,16 +4,17 @@
 args <- commandArgs(TRUE)
 #First arg is fpkm, second is factors file, third is sample subset, fourth is number of bootstraps, fifth is number of genes
 name <- args[1]
+run <- args[2]
 
 library(plyr)
 
 load(paste(name,"InitialData.RData",sep="_")) #load initial codes, names, and fpkm
 
 nGene = 10
-bootsPerCore = 100
+bootsPerCore = 1000
 
 #This is better than full parallelization so we can deal with the try error
-runGenie <- function(){
+runGenie <- function(run){
   setwd("~/GENIE3_R_C_wrapper") #Have to switch directories because there are .so files we need
   source("~/GENIE3_R_C_wrapper/GENIE3.R")
   Results = list()
@@ -28,15 +29,12 @@ runGenie <- function(){
     }
   }
   Results = ldply(Results)
-  df <- read.csv(paste("~/Nurse_Larva/",name,"_results.csv",sep=""))
-  df = df[,-c(1)]
-  df <- rbind(df,Results)
-  write.csv(df,file=paste("~/Nurse_Larva/",name,"_results.csv",sep=""))
+  write.csv(df,file=paste("~/Nurse_Larva/",name,run,"_results.csv",sep=""))
   return()
 }
 
 #subset fpkm based on which samples requested, how many genes
-setInput <- function(codes,names){
+setInput <- function(codes,names,fpkm){
   AllExpr = list()
   for (i in 1:5){
     nSamp = getNsamp(codes,i)
@@ -44,7 +42,7 @@ setInput <- function(codes,names){
     for (j in 1:length(codes)){
       f = factors[grepl(codes[j],factors$sample.id)&factors$stage==i,]
       samps = sample(f$sample.id,nSamp,replace=FALSE) ##Want same number of samples per sample type
-      expr[[j]] = fpkm[,samps]
+      expr[[j]] = fpkm[,as.character(samps)]
       expr[[j]]$tissue=names[j]
       expr[[j]]$gene = rownames(expr[[j]])
       expr[[j]]$tissue_gene = with(expr[[j]],paste(tissue,gene,sep="_"))
@@ -67,5 +65,5 @@ getNsamp <- function(codes,stage){
   return(min(nSamp))
 }
 
-input <- setInput(codes,names)
-runGenie()
+input <- setInput(codes,names,fpkm)
+runGenie(run)
