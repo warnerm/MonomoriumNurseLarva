@@ -1,44 +1,58 @@
 #Collects RandomNetworks_parallel results, summarizes data frame to get mean connection weight for pairings
+library(rslurm)
 library(plyr)
+#args <- commandArgs(TRUE)
 
+#name <- args[1]
 #Load in results of networks with top 1000 connected genes
-setwd("~/Results/")
-
-collate <- function(name){
-  files <- list.files(pattern=paste(name,".*RData",sep=""))
-  WorkerRes = list()
-  for (i in 1:length(files)){
-    load(files[i])
-    WorkerRes[[i]] = ddply(Results,~regulatory.gene + target.gene,summarize,parallel=TRUE,
-                           N = length(weight),
-                           meanW = mean(weight))
+#load(paste(name,"InitialData.RData",sep="_")) #load initial codes, names, and fpkm
+load(paste("worker_500000_1000_InitialData.RData",sep="_"))
+genes <- rownames(fpkm)
+name='worker_500000_1000'
+files <- list.files(pattern=paste(name,".*csv",sep="")) #List all output genie files
+files = data.frame(file=as.character(files[1:6]))
+WorkerRes = list()
+fun <- function(file){
+  library(plyr)
+  load(paste("worker_500000_1000_InitialData.RData",sep="_")) #load initial codes, names, and fpkm
+  genes <- rownames(fpkm)
+  print(as.character(file))
+  d <- read.csv(as.character(file))
+  d <- d[1:500,]
+  res <- vector("list",length(genes))
+  names(res) = genes
+  for (i in 1:length(res)){
+    res[[i]]=vector("list",9)
+    names(res[[i]])=apply(expand.grid(names,names),1,function(x) paste(x[1],x[2],sep=".")) #List all 9 combinations (L-L, L-WH, etc)
+    d2 = d[gsub(".*_","",d$regulatory.gene) %in% genes[i],] #subset dataframe for rows in which the regulatory gene is present
+    for (j in 1:nrow(d2)){
+      samp = paste(gsub("_.*","",d2$regulatory.gene[j]),gsub("_.*","",d2$target.gene[j]),sep=".") #"Sample" is the regulatory connection between tissues...i.e. NurseHeadH.WorkLarv is WH->L
+      res[[i]][[samp]]=c(res[[i]][[samp]],d2$weight[j]) #Connection strength from genie
+    }
   }
-  WorkerRes = ldply(WorkerRes,data.frame)
-  #Calculate pairwise mean connection values
-  WRsum = ddply(WorkerRes,~regulatory.gene + target.gene,summarize,parallel=TRUE,
-                N = sum(N),
-                meanW = mean(meanW))
-  WRsum = WRsum[order(WRsum$meanW,decreasing=TRUE),]
-  stat <- c(mean(WRsum$N),ci1=quantile(WRsum$N,0.025),ci2=quantile(WRsum$N,0.975))
-  write.csv(WRsum,"CompiledConnections.csv")
-  write.table(stat,"MeanNumberConns.txt")
-
-  WRsoc = data.frame(gene = unique(gsub(".*_","",WRsum$regulatory.gene)))
-  WRsoc$Lwithin=WRsoc$Lbetween=WRsoc$WHwithin=WRsoc$WHbetween=WRsoc$WGwithin=WRsoc$WGbetween=WRsoc$nNet=0
-  for (i in 1:nrow(WRsoc)){
-    d = WRsum[grepl(WRsoc$gene[i],WRsum$regulatory.gene),]
-    WRsoc$Lwithin[i] = mean(d$meanW[grepl("Larv",d$target.gene)&grepl("Larv",d$regulatory.gene)])
-    WRsoc$Lbetween[i] = mean(d$meanW[(!grepl("Larv",d$target.gene))&grepl("Larv",d$regulatory.gene)])
-    WRsoc$WHwithin[i] = mean(d$meanW[grepl("NurseH",d$target.gene)&grepl("NurseH",d$regulatory.gene)])
-    WRsoc$WHbetween[i] = mean(d$meanW[(grepl("Larv",d$target.gene))&grepl("NurseH",d$regulatory.gene)])
-    WRsoc$WGwithin[i] = mean(d$meanW[grepl("NurseG",d$target.gene)&grepl("NurseG",d$regulatory.gene)])
-    WRsoc$WGbetween[i] = mean(d$meanW[(grepl("Larv",d$target.gene))&grepl("NurseG",d$regulatory.gene)])
-    WRsoc$WG.WH[i] = mean(d$meanW[(grepl("NurseH",d$target.gene))&grepl("NurseG",d$regulatory.gene)])
-    WRsoc$WH.WG[i] = mean(d$meanW[(grepl("NurseG",d$target.gene))&grepl("NurseH",d$regulatory.gene)])
-    WRsoc$nNet[i] = nrow(d)  
-  }
-  write.csv(WRsoc,paste(name,"SocialityDF.csv",sep=""))
+  return(res)
 }
 
-collate("TopExprWorkerNet")
 
+sjob <- slurm_apply(fun, files, jobname = 'collect_parGenie',
+                    add_objects = c("names","genes"),
+                    nodes = 2, cpus_per_node = 3, submit = TRUE)
+
+res <- get_slurm_out(sjob,outtype='raw') #get output as lists
+save(res,file="test.RData")
+
+resL <- do.call(Map,c(c,res)) #Combine all lists so that for each gene we have a vector of regulatory observations
+
+resL2 <- vector("list",length=nrow(fpkm))
+names(resL2) = rownames(fpkm)
+for (gene in rownames(fpkm)){
+  resL2[[gene]]=matrix(nrow=1,ncol=10)
+  colnames(resL2[[gene]])=c("gene",apply(expand.grid(names,names),1,function(x) paste(x[1],x[2],sep=".")))
+  resL2[[gene]]['gene']=gene
+  for (col in colnames(resL2[[gene]])[2:10]){
+    resL2[[gene]][col] = mean(resL[[gene]][[col]])
+  }
+}
+
+resL3 <- ldply(resL2,matrix)
+write.csv(resL3,file=paste(name,"connStrengths.csv",sep="_"))
