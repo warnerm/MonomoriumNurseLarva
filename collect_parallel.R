@@ -8,7 +8,7 @@ name <- args[1]
 load(paste(name,"InitialData.RData",sep="_"))
 genes <- rownames(fpkm)
 files <- list.files(pattern=paste(name,".*csv",sep="")) #List all output genie files
-files = data.frame(file=as.character(files[1:6]),name=name)
+files = data.frame(file=as.character(files),name=name)
 fun <- function(file,name){
   load(paste("../",as.character(name),"_InitialData.RData",sep=""))
   genes <- rownames(fpkm)
@@ -33,7 +33,6 @@ fun <- function(file,name){
 }
 
 sjob <- slurm_apply(fun, files, jobname = 'collect_parGenie',
-                    add_objects = c("name","genes"),
                     nodes = 4, cpus_per_node = 15, submit = TRUE)
 
 res <- get_slurm_out(sjob,outtype='raw') #get output as lists
