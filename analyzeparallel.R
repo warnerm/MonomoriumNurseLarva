@@ -32,9 +32,62 @@ bootMean <- function(data,boots){
   return(res)
 }
 
-df <- read.csv("~/Data/new/CompiledConnections.csv")
+df <- read.csv("~/Data/Nurse_Larva/workerQR_500000_1000_connStrengths.csv")
+dfR <- read.csv("~/Data/Nurse_Larva/random_500000_1000_connStrengths.csv")
+df = df[,-c(1:2)]
+dfR = dfR[,-c(1,2)]
+colnames(df)[2:10]=colnames(dfR)[2:10]=c("L_L","WH_L","WG_L","L_WH","WH_WH","WG_WH","L_WG","WH_WG","WG_WG")
+colnames(dfR)[2:10]=paste(colnames(dfR)[2:10],"random",sep="")
+dfB = merge(df,dfR,by="gene",all=TRUE)
+dfB2 = dfB[!is.na(dfB$L_L)&!is.na(dfB$L_Lrandom),]
+for (i in 2:10){
+  print(colnames(dfB2)[i])
+  print(cor.test(dfB2[,i],dfB2[,i+9]))
+}
 
-df <- read.csv("~/Data/new/TopExprWorkerNetSocialityDF.csv")
+allD = list(df,dfR)
+for (i in 1:2){
+  allD[[i]]$SIL_WH=allD[[i]][,5] - allD[[i]][[2]]
+  allD[[i]]$SIL_WG=allD[[i]][,8] - allD[[i]][[2]]
+  allD[[i]]$SIWH=allD[[i]][,3]- allD[[i]][[6]]
+  allD[[i]]$SIWG=allD[[i]][,4] - allD[[i]][[10]]
+}
+
+allD = merge(allD[[1]],allD[[2]],by="gene",all=TRUE)
+wilcox.test(allD$SIL_WH.x,allD$SIL_WH.y,paired = FALSE,alternative="greater")
+wilcox.test(allD$SIL_WG.x,allD$SIL_WG.y,paired = FALSE,alternative="greater")
+wilcox.test(allD$SIWH.x,allD$SIWH.y,paired = FALSE,alternative="greater")
+wilcox.test(allD$SIWG.x,allD$SIWG.y,paired = FALSE,alternative="greater")
+
+df[,2:10]=df[,2:10]/max(df[,2:10])
+dfR[,2:10]=dfR[,2:10]/max(dfR[,2:10])
+dfB = merge(df,dfR,by="gene",all=TRUE)
+dfM = melt(dfB,id.vars="gene")
+dfM$cond = "focal"
+dfM$cond[grepl("random",dfM$variable)]="random"
+dfM$variable=gsub("random","",dfM$variable)
+dfM = droplevels(dfM)
+dfM$variable=factor(dfM$variable,levels=c("L_L","WH_WH","WG_WG","WH_WG","WG_WH","L_WH","L_WG","WH_L","WG_L"))
+
+ggplot(dfM,aes(x=variable,y=value,fill=cond))+
+  geom_boxplot(notch=TRUE)
+
+for (lev in levels(dfM$variable)){
+  print(lev)
+  print(wilcox.test(dfM$value[dfM$variable==lev&dfM$cond=="focal"],dfM$value[dfM$variable==lev&dfM$cond=="random"],paired=FALSE,alternative="greater"))
+}
+
+#################
+##Continuing with only focal nurse data; using QR and QL together
+#################
+
+
+
+
+
+
+
+
 load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
 exprH = rowSums(fpkm[,grepl("C.*_WH",colnames(fpkm))])/sum(grepl("C.*_WH",colnames(fpkm)))
 exprG = rowSums(fpkm[,grepl("C.*_WG",colnames(fpkm))])/sum(grepl("C.*_WG",colnames(fpkm)))
@@ -45,6 +98,11 @@ expr = data.frame(exprH=exprH,exprG=exprG,exprL=exprL,
                   exprQH=exprQH,exprQG=exprQG,gene=names(exprH))
 
 df = df[,c(1,2,4:11)]
+df <- read.csv("~/Data/Nurse_Larva/workerQR_500000_1000_connStrengths.csv")
+df = df[,-c(1:2)]
+colnames(df)[2:10]=colnames(dfR)[2:10]=c("L_L","WH_L","WG_L","L_WH","WH_WH","WG_WH","L_WG","WH_WG","WG_WG")
+
+
 df$SIL = df$Lbetween - df$Lwithin
 df$SIWH = df$WHbetween - df$WHwithin
 df$SIWG = df$WGbetween - df$WGwithin
@@ -910,7 +968,7 @@ rh$SIWG = -rh$RandNurseG_RandNurseG + rh$WorkLarvQR_RandNurseG
 rh$SIL = (rh$WorkLarvQR_RandNurseG+rh$WorkLarvQR_RandNurseH)/2 - rh$WorkLarvQR_WorkLarvQR
 f.est <- read.csv("~/Data/MKtestConstraintOneAlpha.csv")
 colnames(f.est) = c("gene","f.est")
-dfAll <- merge(f.est,rh,by="gene")
+dfAll <- merge(f.est,work,by="gene")
 dfAll$SI_Overall = (dfAll$SIWH+dfAll$SIWG+dfAll$SIL)/3
 
 
@@ -930,9 +988,22 @@ lm <- glm(SIWH ~ PS2, data=dfAll)
 lm <- glm(SI_Overall ~ PS2, data=dfAll)
 summary(glht(lm, mcp(PS2="Tukey"))) 
 
-
-ggplot(res,aes(x=samp,y=V4))+
+dr = melt(rand[,c(1:7)],id.vars=c("gene"))
+p1<- ggplot(dr,aes(x=variable,y=value))+
   geom_boxplot()
 
-res$
+dr = melt(work[,c(1:7)],id.vars=c("gene"))
+p2<- ggplot(dr,aes(x=variable,y=value))+
+  geom_boxplot()
+
+grid.arrange(p1,p2)
+
+
+
+
+
+
+
+
+
 
