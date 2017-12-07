@@ -97,7 +97,7 @@ NullMembership <- function(){
   # In parallel, go through all permutations
   sjob <- slurm_apply(NullSort, p, jobname = 'parSTEM',
                       nodes = 4, cpus_per_node = 10, 
-                      add_objects=c("NullSort","profiles","GeneMember","timepoints","StageExpr"),
+                      add_objects=c("NullSort","profiles","GeneMember","timepoints","StageExpr","stagePerm"),
                       submit = TRUE)
   res <- get_slurm_out(sjob,outtype='raw') #get output as lists
 
@@ -113,7 +113,7 @@ NullMembership <- function(){
 NullSort <- function(k){
   GeneMembership = c()
   for (i in 1:nrow(StageExpr)){ ##One gene at a time
-    expr = StageExpr[i,]
+    expr = StageExpr[i,(timepoints-5+as.numeric(stagePerm[k,]))]
     member = GeneMember(expr) ##Sort genes using permuted data
     GeneMembership = c(GeneMembership,member)
   }
@@ -137,7 +137,7 @@ SigProfiles <- function(Expected,Membership){
 }
 
 ##Full algorithm
-Alg <- function(code,name){
+Alg <- function(name){
   Sort <- SortGenes() ##Sort genes into profiles
   Expected <- NullMembership() ##Generate null distribution
   sigProf <- SigProfiles(Expected,Sort[[1]])[[1]] ##find significant profiles
