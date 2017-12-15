@@ -39,7 +39,7 @@ DEgeneS <- DEgene[1:4]
 #'Social' genes have pearson cor CI non-overlapping with random nurse cor CI AND more abs(cor_focal) > abs(cor_random)
 #'Control' genes have pearson cor CI non-overlapping AND abs(cor_rand) > abs(cor_focal)
 testCor <- function(){
-  Lgenes = rownames(fpkm)[1:5]
+  Lgenes = rownames(fpkm)
   df = data.frame(geneL = Lgenes)
   sjob <- slurm_apply(getSocConns, df, jobname = 'parCor',
                      nodes = 4, cpus_per_node = 20, add_objects=c("data","genes","getCorCI","conType","compareCor"),submit = TRUE)
@@ -127,7 +127,7 @@ data <- formatExpr("W_L","CG","RG")
 genes <- DEgeneS[[4]]
 corCG <- testCor()
 
-save(corQCH,corQCG,corCH,DEgeneS,file='CorResults.RData')
+save(corQCH,corQCG,corCH,corCG,DEgeneS,file='CorResults.RData')
 
 #From this, we get a list of social links
 #For each nurse gene, then, we have table of the types of links. This is, in some way, a measure of sociality
