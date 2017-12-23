@@ -100,12 +100,12 @@ def clusterSil(K):
 
 def performCluster(b,kval):
     clusters, medioids, sil = clusterSil(kval)
-    return np.mean(sil)
+    return np.mean(sil), clusters
 
 pltN = 0
-maxK = 40
+maxK = 4
 minK = 2
-boots = 100
+boots = 5
 nTest = maxK - minK + 1
 
 #Read in fpkm data
@@ -118,13 +118,31 @@ pearson = data.transpose().corr(method = 'pearson')
 dist = 1 - abs(pearson)
 
 num_cores = multiprocessing.cpu_count()
-f = open('findK.txt','w')
+f = open('findK_sil.txt','w')
 f.write("K\tMeanSil\n")
 f.close()
+
+f = open('findK_cluster.txt','w')
+for n in range(np.shape(data)[0]):
+    f.write('gene' + str(n))
+    if n < (np.shape(data)[0] - 1):
+        f.write('\t')
+f.write('\n')
+f.close()
+
+#Run algorithm for a range of K values. At each K value, return the configuration that minimizes sum of squares
 for kval in range(minK,maxK+1):
     print kval
     result = Parallel(n_jobs=num_cores)(delayed(performCluster)(b,kval) for b in range(boots))
-    f = open('findK.txt','a')
-    for b in range(boots):
-        f.write(str(kval) + '\t' + str(result[b]) + '\n')
+    # Calculate within-cluster sum of squares
+
+    optimal = np.argmax(result[:][0])
+    print optimal
+    print max(result[:][0])
+    f = open('findK_cluster.txt', 'a')
+    for n in range(np.shape(data)[0]):
+        f.write(result[optimal][n])
+        if n < (np.shape(data)[0] - 1):
+            f.write('\t')
+    f.write('\n')
     f.close()
