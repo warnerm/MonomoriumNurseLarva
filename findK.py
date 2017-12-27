@@ -103,9 +103,9 @@ def performCluster(b,kval):
     return np.mean(sil), clusters
 
 pltN = 0
-maxK = 4
+maxK = 40
 minK = 2
-boots = 5
+boots = 100
 nTest = maxK - minK + 1
 
 #Read in fpkm data
@@ -118,6 +118,7 @@ pearson = data.transpose().corr(method = 'pearson')
 dist = 1 - abs(pearson)
 
 num_cores = multiprocessing.cpu_count()
+
 f = open('findK_sil.txt','w')
 f.write("K\tMeanSil\n")
 f.close()
@@ -133,16 +134,21 @@ f.close()
 #Run algorithm for a range of K values. At each K value, return the configuration that minimizes sum of squares
 for kval in range(minK,maxK+1):
     print kval
-    result = Parallel(n_jobs=num_cores)(delayed(performCluster)(b,kval) for b in range(boots))
-    # Calculate within-cluster sum of squares
+    results = Parallel(n_jobs=num_cores)(delayed(performCluster)(b,kval) for b in range(boots))
 
-    optimal = np.argmax(result[:][0])
-    print optimal
-    print max(result[:][0])
+    #flatten list, extract clusters and silhouette values
+    flat = [item for sublist in results for item in sublist]
+    sil = flat[0:len(flat):2]
+    clusterID = flat[1:len(flat):2]
+    optimal = np.argmax(sil)
     f = open('findK_cluster.txt', 'a')
     for n in range(np.shape(data)[0]):
-        f.write(result[optimal][n])
+        f.write(str(clusterID[optimal][n]))
         if n < (np.shape(data)[0] - 1):
             f.write('\t')
     f.write('\n')
+    f.close()
+
+    f = open('findK_sil.txt', 'a')
+    f.write(str(kval)+'\t'+str(sil[optimal])+'\n')
     f.close()
