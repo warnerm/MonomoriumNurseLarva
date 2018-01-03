@@ -65,6 +65,70 @@ png("~/Writing/Figures/NurseLarva/corApproach/PosNegNumbers.png",width=4000,heig
 do.call("grid.arrange", c(plots, ncol=2))
 dev.off()
 
+
+#Load larval module definitions
+df <- read.table("findK_cluster.txt",header=TRUE)
+mods = t(df[11,]) #12 modules results in a high SIL
+fpkm <- read.csv("fpkm.csv") #genes are indexed as in fpkm file
+rownames(mods)=fpkm$X
+mediods = unique(as.vector(mods))
+mList <- lapply(mediods,function(x) rownames(mods)[mods == x])
+
+#From assignNurseMods.py, files containing module assignments for nurse genes
+#socNum is for accessing socDet for specific tissues
+getSocMod <- function(code){
+  #First row is true values, subsequent values are derived by scrambling stage codes
+  dfH <- read.table(paste("~/Data/Nurse_Larva/sortMods",code,".txt",sep=""),head=TRUE)
+  names(dfH) = fpkm$X
+  
+  #Filter for social genes
+  soc = socDet[[code]]
+  dfH = dfH[,colnames(dfH) %in% soc$Gene[soc$geneType=='social']]
+  
+  #True assignments
+  Ht <- t(dfH[1,])
+  
+  #'Bootstrapped' assignments
+  dfH = dfH[-c(1),]
+  
+  #Identify null distribution of numbers of genes per module
+  occ <- apply(dfH,1,function(x) unlist(lapply(mediods,function(y) length(colnames(dfH)[x == y]))))
+  
+  #null hypothesis mean based on resampling 
+  null_mean <- apply(occ,1,function(x) c(mean = mean(x),ci95 = quantile(x,0.95)))
+
+  #Social modules
+  nSoc <- unlist(lapply(mediods,function(y) length(colnames(Ht)[Ht == y])))
+  null_mean$trueN = nSoc
+  binom <- apply(cbind(nSoc,m = null_mean$mean),1,function(y) binom.test(x = y['nSoc'], p = y['null_mean']/length(Ht),n = length(Ht),alternative = "greater")$p.value)
+  socMod <- mediods[binom < 0.05]
+  socList <- lapply(socMod,function(x) rownames(Ht)[Ht == x])
+  names(socList) = socMod
+  return(list(socList,null_mean,binom))
+}
+
+#Plot null and true results for numbers of genes in each module
+plotNurseMod <- function(null_mean){
+  null_mean$Module = as.factor(seq(1,nrow(null_mean),by=1))
+  m <- melt(null_mean,id.vars=c("ci95","Module"))
+  m$ci95[m$variable=="nSoc"]=NA #No confidence interval for true values
+  levels(variable) = c("mean of bootstraps","true value")
+  limits <- aes(xmin = mean - 10,xmax = ci95)
+  p <- ggplot(null_mean,aes(x=Module,y=mean,fill=variable))+
+    geom_errorbar(limits)+ #plotting error bars first makes the bottom ones disappear 
+    geom_bar(stat="identity")+
+    scale_fill_manual(name="expression profile correlated with larvae?",values = Soc_palette)+theme_bw()+
+    ylab("number of genes")+
+    xlab("tissue")
+  return(p)
+}
+
+#Get social module, stats on bootstrapping
+codes <- c('CH','CG','RH','RG','QCH','QCG')
+nurseMods <- lapply(codes,function(x) getSocMod(x))
+modPlots <- lapply(nurseMods, plotNurseMod)
+
+
 #Previously derived GO annotations
 go <- read.csv("~/Writing/Data/NurseSpecialization_transcriptomicData/GOannotation.csv")
 new <- list()
@@ -72,121 +136,6 @@ for (gene in unique(go$gene)){
   d = go[go$gene %in% gene,]
   new[[gene]]=as.character(d$GO)
 }
-
-#Define genes as social or not
-#Not necessary for GSEA, but necessary for identifying significant genes
-selectFDR <- function(score){
-  return(score < 0.05)
-}
-
-#GO analysis for categories
-GSEA <- function(socialP){
-  GOdata <- new("topGOdata",
-                description="Simple session",ontology="BP",
-                allGenes=socialP,geneSel=selectFDR,
-                nodeSize = 10,
-                annot=annFUN.gene2GO,gene2GO=new)
-  resultKS <- runTest(GOdata, algorithm = "classic", statistic = "ks",scoreOrder="increasing")
-  allRes <- GenTable(GOdata,KS=resultKS)
-  return(allRes[allRes$Significant> allRes$Expected,])
-}
-
-getGSEA <- function(x){
-  vec = x$social-x$control
-  names(vec) = x$Gene
-  tabl = GSEA(vec)
-  return(tabl$Term[tabl$KS < 0.05])
-}
-
-GOres <- lapply(socP,GSEA)
-
-GOres <- lapply(socDet,getGSEA)
-res = sapply(GOres,'[',1:max) #keep 10 GO terms
-res <- as.data.frame(res)
-colnames(res) = names(socDet)
-
-tt3 <- ttheme_minimal(
-  core=list(
-    fg_params=list(fontsize=8)),
-  colhead=list(fg_params=list(fontface="bold",fontsize=14)))
-
-#Make table grob out of results
-resT <- tableGrob(res,theme=tt3,rows=NULL)
-grid.arrange(resT)
-g <- gtable_add_grob(resT,
-                     grobs = segmentsGrob( # line across the bottom
-                       x0 = unit(0,"npc"),
-                       y0 = unit(0,"npc"),
-                       x1 = unit(1,"npc"),
-                       y1 = unit(0,"npc"),
-                       gp = gpar(lwd = 3.0)),
-                     t = 1, b = 1, l = 1, r = 4)
-separators <- replicate(ncol(g) - 1,
-                        segmentsGrob(x1 = unit(0, "npc"), gp=gpar(lty=2)),
-                        simplify=FALSE)
-## add vertical lines on the left side of columns (after 2nd)
-g <- gtable::gtable_add_grob(g, grobs = separators,
-                             t = 2, b = nrow(g), l = seq_len(ncol(g)-1)+1)
-p <- grid.arrange(g)
-ggsave(p,file="~/Writing/Figures/NurseLarva/corApproach/TableGO.png",width=10,height=4,dpi=300)
-
-#Evolutionary and functional differences between social and non-social genes
-
-#What is the PS distribution of social genes vs NS? vs rest of genome?
-#Relationship between number of social links and PS?
-#GSEA for social genes
-
-
-ext <- read.csv("~/Downloads/msx123_Supp (1)/MpharAnn.csv") #load in MBE results
-
-getPS <- function(d){
-  d = merge(d,ext,by="Gene",all.y=TRUE)
-  d$PS2=as.character(d$PS2)
-  d$PS2[d$Raw.PS=="Monomorium pharaonis"]="M. pharaonis"
-  d=droplevels(d[!is.na(d$PS2),])
-  d$PS2 = factor(d$PS2,levels = c(
-    "cellular","eukaryote","bilaterian","insect","hymenopteran_ant","M. pharaonis"
-  ))
-  levels(d$PS2)[5]="hymenopteran"
-  d$soc = 0
-  d$soc[d$geneType=="social"]=1
-  return(d[,c("Gene","negSocial","geneType","posSocial","negControl","posControl","social","control","PS2","SwissProt","UniProt","soc")])
-}
-
-graphPS <- function(d){
-  p1 <- ggplot(d[],aes(x=PS2,fill = geneType))+
-    geom_bar(stat="count")+theme_bw()
-
-  return(p1)
-}
-
-PS_sum <- lapply(socDet,getPS)
-d = PS_sum[[1]][order(PS_sum[[1]]$negSocial/(PS_sum[[1]]$posSocial+PS_sum[[1]]$posControl),decreasing=TRUE),]
-
-testPS <- function(d){
-  d = d[!is.na(d$negSocial),]
-  soc = d$geneType == "social"
-  res = matrix(nrow=length(levels(d$PS2)),ncol=2)
-  for (i in 1:length(levels(d$PS2))){
-    ps = d$PS2 == levels(d$PS2)[i]
-    tbl <- rbind(c(sum(soc & ps),sum(soc & !ps)),c(sum(!soc & ps),sum(!soc & !ps)))
-    test = chisq.test(tbl)
-    res[i,1] = test$statistic
-    res[i,2] = test$p.value
-  }
-  colnames(res) = c("X2","P")
-  rownames(res) = levels(d$PS2)
-  return(res)
-}
-
-test <- lapply(PS_sum,testPS)
-
-lm <- glm(social ~ PS2,data = d,family="binomial")
-summary(glht(lm, mcp(PS2="Tukey"))) 
-
-
-graphs <- lapply(PS_sum,graphPS)
-
 
 #Graph-based questions:
 #What is the connectivity distribution of social genes in non-social networks?
@@ -267,51 +216,6 @@ d <- read.table("~/Data/Nurse_Larva/Results_18_Dec_17_6/Clusters_Objects.tsv",he
 ########################
 ####Note that we also want to ask about function, PS, and constraint/alpha
 
-#Load dataframe identifying social genes
-load("~/Data/Nurse_Larva/socDet.RData")
-
-#Load larval module definitions
-df <- read.table("~/Data/Nurse_Larva/findK_cluster.txt",header=TRUE)
-mods = t(df[11,]) #12 modules results in a high SIL
-fpkm <- read.csv("~/Data/Nurse_Larva/fpkm.csv") #genes are indexed as in fpkm file
-rownames(mods)=fpkm$X
-mediods = unique(as.vector(mods))
-mList <- lapply(mediods,function(x) rownames(mods)[mods == x])
-
-#From assignNurseMods.py, files containing module assignments for nurse genes
-#socNum is for accessing socDet for specific tissues
-getSocMod <- function(code,socNum){
-  #First row is true values, subsequent values are derived by scrambling stage codes
-  dfH <- read.table(paste("~/Data/Nurse_Larva/sortMods",code,".txt",sep=""),head=TRUE)
-  names(dfH) = fpkm$X
-  
-  #Filter for social genes
-  soc = socDet[[socNum]]
-  dfH = dfH[,colnames(dfH) %in% soc$Gene[soc$geneType=='social']]
-  
-  #True assignments
-  Ht <- t(dfH[1,])
-  
-  #'Bootstrapped' assignments
-  dfH = dfH[-c(1),]
-  
-  #Identify null distribution of numbers of genes per module
-  occ <- apply(dfH,1,function(x) unlist(lapply(mediods,function(y) length(colnames(dfH)[x == y]))))
-  
-  #null hypothesis mean based on resampling 
-  null_mean <- apply(occ,1,function(x) mean(x))
-  
-  #Social modules
-  nSoc <- unlist(lapply(mediods,function(y) length(colnames(Ht)[Ht == y])))
-  binom <- apply(cbind(nSoc,null_mean),1,function(y) binom.test(x = y['nSoc'], p = y['null_mean']/length(Ht),n = length(Ht),alternative = "greater")$p.value)
-  socMod <- mediods[binom < 0.05]
-  socList <- lapply(socMod,function(x) rownames(Ht)[Ht == x])
-  names(socList) = socMod
-  return(list(socList,nSoc,null_mean,binom))
-}
-
-HsocMod <- getSocMod('CH',1)
-GsocMod <- getSocMod('CG',2)
 
 #Not necessary for GSEA, but necessary for identifying significant genes
 selectFDR <- function(score){
@@ -508,6 +412,122 @@ table(df[1,])
 d <- read.csv("~/Data/Nurse_Larva/fpkm.csv")
 d = d[,grepl("W_L",colnames(d))]
 d = d[1:50,]
+
+
+#Define genes as social or not
+#Not necessary for GSEA, but necessary for identifying significant genes
+selectFDR <- function(score){
+  return(score < 0.05)
+}
+
+#GO analysis for categories
+GSEA <- function(socialP){
+  GOdata <- new("topGOdata",
+                description="Simple session",ontology="BP",
+                allGenes=socialP,geneSel=selectFDR,
+                nodeSize = 10,
+                annot=annFUN.gene2GO,gene2GO=new)
+  resultKS <- runTest(GOdata, algorithm = "classic", statistic = "ks",scoreOrder="increasing")
+  allRes <- GenTable(GOdata,KS=resultKS)
+  return(allRes[allRes$Significant> allRes$Expected,])
+}
+
+getGSEA <- function(x){
+  vec = x$social-x$control
+  names(vec) = x$Gene
+  tabl = GSEA(vec)
+  return(tabl$Term[tabl$KS < 0.05])
+}
+
+GOres <- lapply(socP,GSEA)
+
+GOres <- lapply(socDet,getGSEA)
+res = sapply(GOres,'[',1:max) #keep 10 GO terms
+res <- as.data.frame(res)
+colnames(res) = names(socDet)
+
+tt3 <- ttheme_minimal(
+  core=list(
+    fg_params=list(fontsize=8)),
+  colhead=list(fg_params=list(fontface="bold",fontsize=14)))
+
+#Make table grob out of results
+resT <- tableGrob(res,theme=tt3,rows=NULL)
+grid.arrange(resT)
+g <- gtable_add_grob(resT,
+                     grobs = segmentsGrob( # line across the bottom
+                       x0 = unit(0,"npc"),
+                       y0 = unit(0,"npc"),
+                       x1 = unit(1,"npc"),
+                       y1 = unit(0,"npc"),
+                       gp = gpar(lwd = 3.0)),
+                     t = 1, b = 1, l = 1, r = 4)
+separators <- replicate(ncol(g) - 1,
+                        segmentsGrob(x1 = unit(0, "npc"), gp=gpar(lty=2)),
+                        simplify=FALSE)
+## add vertical lines on the left side of columns (after 2nd)
+g <- gtable::gtable_add_grob(g, grobs = separators,
+                             t = 2, b = nrow(g), l = seq_len(ncol(g)-1)+1)
+p <- grid.arrange(g)
+ggsave(p,file="~/Writing/Figures/NurseLarva/corApproach/TableGO.png",width=10,height=4,dpi=300)
+
+#Evolutionary and functional differences between social and non-social genes
+
+#What is the PS distribution of social genes vs NS? vs rest of genome?
+#Relationship between number of social links and PS?
+#GSEA for social genes
+
+
+ext <- read.csv("~/Downloads/msx123_Supp (1)/MpharAnn.csv") #load in MBE results
+
+getPS <- function(d){
+  d = merge(d,ext,by="Gene",all.y=TRUE)
+  d$PS2=as.character(d$PS2)
+  d$PS2[d$Raw.PS=="Monomorium pharaonis"]="M. pharaonis"
+  d=droplevels(d[!is.na(d$PS2),])
+  d$PS2 = factor(d$PS2,levels = c(
+    "cellular","eukaryote","bilaterian","insect","hymenopteran_ant","M. pharaonis"
+  ))
+  levels(d$PS2)[5]="hymenopteran"
+  d$soc = 0
+  d$soc[d$geneType=="social"]=1
+  return(d[,c("Gene","negSocial","geneType","posSocial","negControl","posControl","social","control","PS2","SwissProt","UniProt","soc")])
+}
+
+graphPS <- function(d){
+  p1 <- ggplot(d[],aes(x=PS2,fill = geneType))+
+    geom_bar(stat="count")+theme_bw()
+  
+  return(p1)
+}
+
+PS_sum <- lapply(socDet,getPS)
+d = PS_sum[[1]][order(PS_sum[[1]]$negSocial/(PS_sum[[1]]$posSocial+PS_sum[[1]]$posControl),decreasing=TRUE),]
+
+testPS <- function(d){
+  d = d[!is.na(d$negSocial),]
+  soc = d$geneType == "social"
+  res = matrix(nrow=length(levels(d$PS2)),ncol=2)
+  for (i in 1:length(levels(d$PS2))){
+    ps = d$PS2 == levels(d$PS2)[i]
+    tbl <- rbind(c(sum(soc & ps),sum(soc & !ps)),c(sum(!soc & ps),sum(!soc & !ps)))
+    test = chisq.test(tbl)
+    res[i,1] = test$statistic
+    res[i,2] = test$p.value
+  }
+  colnames(res) = c("X2","P")
+  rownames(res) = levels(d$PS2)
+  return(res)
+}
+
+test <- lapply(PS_sum,testPS)
+
+lm <- glm(social ~ PS2,data = d,family="binomial")
+summary(glht(lm, mcp(PS2="Tukey"))) 
+
+
+graphs <- lapply(PS_sum,graphPS)
+
 
 
 
