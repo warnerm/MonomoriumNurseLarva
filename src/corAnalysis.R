@@ -65,49 +65,6 @@ png("~/Writing/Figures/NurseLarva/corApproach/PosNegNumbers.png",width=4000,heig
 do.call("grid.arrange", c(plots, ncol=2))
 dev.off()
 
-##################
-##GO analysis for p value of original differential expression test, now filtering out control and NS genes
-##################
-
-load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
-####Inital steps of standard edgeR analysis, as per manual
-EdgeR <- function(data,design,coef){
-  data <- DGEList(counts=data)
-  data <- calcNormFactors(data)
-  dat <- estimateGLMTrendedDisp(data, design)
-  dat <- estimateGLMTagwiseDisp(dat, design)
-  fit <- glmFit(dat,design)
-  diff <- glmLRT(fit, coef=coef) 
-  out <- topTags(diff,n=Inf,adjust.method="BH")$table 	###Calculate FDR
-  return(out)
-}
-
-#Calculate gene p value for stage
-stageGenes <- function(code){
-  f = droplevels(factors[grepl(code,rownames(factors)),])
-  design <- model.matrix(~stage+colony,data=f)
-  nStage = length(levels(f$stage))
-  d <- EdgeR(counts[,colnames(counts) %in% rownames(f)],design,2:nStage)
-  return(d)
-}
-
-#Tests to identify genes with P < 0.05 by stage as candidates for further analysis
-tests <- c("QCH","QCG","CH","CG","XH","XG","CH|XH","CG|XG")
-tests = tests[1:4]
-DEgene <- lapply(tests,stageGenes)
-names(DEgene) = tests
-DEgeneS <- DEgene[1:4]
-
-#Get FDRs of genes identified as social
-filterSocial <- function(socDet,DEgeneS){
-  keep = socDet$Gene[socDet$geneType=="social"]
-  FDR = DEgeneS$FDR
-  names(FDR) = rownames(DEgeneS)
-  return(FDR[names(FDR) %in% keep])
-}
-
-socP <- mapply(filterSocial,socDet,DEgeneS,SIMPLIFY = FALSE)
-
 #Previously derived GO annotations
 go <- read.csv("~/Writing/Data/NurseSpecialization_transcriptomicData/GOannotation.csv")
 new <- list()
