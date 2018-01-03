@@ -11,22 +11,6 @@ import re
 def hypsine ( d ):
     return np.log(d + np.sqrt(d ** 2 + 1))
 
-#Perform quantile normalization
-def quantileNormalize(df_input):
-    df = df_input.copy()
-    #compute rank
-    dic = {}
-    for col in df:
-        dic.update({col : sorted(df[col])})
-    sorted_df = pd.DataFrame(dic)
-    rank = sorted_df.mean(axis = 1).tolist()
-    #sort
-    for col in df:
-        t = np.searchsorted(np.sort(df[col]), df[col])
-        df[col] = [rank[i] for i in t]
-    return df
-
-
 #Derive larva and nurse matrices
 def getMat(nurse):
     dataH = data.filter(regex=nurse, axis=1)
@@ -94,8 +78,6 @@ if __name__ == '__main__':
     data = pd.read_csv("~/Nurse_Larva/fpkm.csv", index_col=0)
     data = data.filter(regex='CG|CH|W_L|RH|RG', axis=1)  # Keep only worker larvae samples
     data = data.apply(hypsine) #hyperbolic sine, similar to log transform
-    data = quantileNormalize(data.transpose())
-    data = data.transpose() #quantile normalize operates on columns, we want to perform it on genes
 
     # Load larval module definitions
     mods = pd.read_table("~/Nurse_Larva/findK_cluster.txt")

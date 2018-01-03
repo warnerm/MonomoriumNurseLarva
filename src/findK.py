@@ -15,20 +15,6 @@ import random
 def hypsine ( d ):
     return np.log(d + np.sqrt(d ** 2 + 1))
 
-def quantileNormalize(df_input):
-    df = df_input.copy()
-    #compute rank
-    dic = {}
-    for col in df:
-        dic.update({col : sorted(df[col])})
-    sorted_df = pd.DataFrame(dic)
-    rank = sorted_df.mean(axis = 1).tolist()
-    #sort
-    for col in df:
-        t = np.searchsorted(np.sort(df[col]), df[col])
-        df[col] = [rank[i] for i in t]
-    return df
-
 #From https://github.com/salspaugh/machine_learning/blob/master/clustering/kmedoids.py
 def cluster(distances, k=3):
     m = distances.shape[0]  # number of points
@@ -112,8 +98,6 @@ def run(code):
     data = pd.read_csv("~/Nurse_Larva/fpkm.csv", index_col=0)
     data = data.filter(regex=code, axis=1)  # Keep only worker larvae samples
     data = data.apply(hypsine)  # hyperbolic sine, similar to log transform
-    data = quantileNormalize(data.transpose())
-    data = data.transpose()
     pearson = data.transpose().corr(method='pearson')
     dist = 1 - abs(pearson)
 
