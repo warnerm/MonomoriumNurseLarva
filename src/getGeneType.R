@@ -33,7 +33,7 @@ socGene <- function(m2){
   return(m2)
 }
 
-allDat <- list(corQCH,corQCG,corCH,corCG,t(corQCH),t(corQCG)) #Last two get Larva-Nurse social genes
+allDat <- list(corQCH,corQCG,corCH,corCG,t(corQCH),t(corQCG),corRH,corRG) #Last two get Larva-Nurse social genes
 table <- lapply(allDat,tabType)
 socDet <- lapply(table,socGene)
 save(socDet,file="socDet.RData")
