@@ -129,90 +129,24 @@ nurseMods <- lapply(codes,function(x) getSocMod(x))
 modPlots <- lapply(nurseMods, plotNurseMod)
 
 #Connectivity scatter-plots
-
-load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
-#Return list of expression matrices for correlation analysis
-formatExpr <- function(codes){
-  d = lapply(codes,subExpr) #get expression matrix for each of three sample types
-  for (i in 1:2){
-    #Needed to align random nurses to QR larvae
-    colnames(d[[i]]) = gsub("R","Q",colnames(d[[i]]))
-  }
-  dF = alignStage(list(d[[1]],d[[2]]))
-  return(dF) #Returns data for foc/larv comparison and rand/larv comparison
-}
-
-#only keeps relevant genes and lines up larvae and nurses by stage
-subExpr <- function(code){
-  f = fpkm[grepl(code,colnames(fpkm))]
-  #hyperbolic sine transformation
-  f = log(f + sqrt(f^2 + 1))
-  colnames(f) = substr(colnames(f),start=1,stop=4) #Has colony, stage and queen presence information
-  return(f)
-}
-
-#Take formatted expression data and remove instances of colonies that don't match (missing data)
-alignStage <- function(d){
-  d[[1]]=d[[1]][,colnames(d[[1]]) %in% colnames(d[[2]])]
-  d[[2]]=d[[2]][,colnames(d[[2]]) %in% colnames(d[[1]])]
-  return(d)
-}
-
-#Function computes WGCNA-like connectivity, signed (power = 6) and unsigned (power = 12)
-#Computes connectivity between a pair of expression matrices
-WGCNAconn <- function(codes){
-  d <- formatExpr(codes)
-  
-  #For testing
-  d[[1]] = d[[1]][1:100,]
-  d[[2]] = d[[2]][1:100,]
-  nGene = nrow(d[[1]])
-  dM <- rbind(d[[1]],d[[2]])
-  corMat <- cor(t(dM))
-  
-  #Only want off diagonal square matrix, which corresponds to between tissue correlation with rows as code1 and columns as code 2
-  corMat <- corMat[1:nGene,(nGene+1):nrow(corMat)]
-  corUnsigned = corMat^4
-  #corSigned = corMat^11
-  return(corUnsigned)
-}
-
-connCode <- list(
-  c('CH','W_L'),
-  c('CG','W_L'),
-  c('RH','W_L'),
-  c('RG','W_L'),
-  c('QCH','W_L'),
-  c('QCG','W_L'),
-  c('CH','CH'),
-  c('CG','CG'),
-  c('RH','RH'),
-  c('RG','RG'),
-  c('QCH','QCH'),
-  c('QCG','QCG')
-)
-
-conns <- lapply(connCode,WGCNAconn)
+load("connMeas.RData")
 
 #Plot relationship between connectivity within and between, for social and non-social genes
 #Calculates connectivity in entire network
 connPlots <- function(kWithin,kBetween,socInd,genesY = NULL,genesX = NULL){
-  if (is.null(genesY)){
-    genesY = colnames(conns[[kWithin]])
-  }
   genes = socDet[[socInd]]$Gene[socDet[[socInd]]$Gene %in% rownames(conns[[kWithin]])]
   
   #For within-module calculations
-  if (!is.null(genesX)){
-    genes = genes[genes %in% genesX]
-  }
+  if (!is.null(genesX)) genes = genes[genes %in% genesX]
+  if (is.null(genesY)) genesY = colnames(conns[[kWithin]])
+  
   soc = socDet[[socInd]]$geneType[socDet[[socInd]]$Gene %in% genes]
   soc[soc!='social']='non-social'
   withinConn <- conns[[kWithin]]
   betweenConn <- conns[[kBetween]]
   
   #Connectivity defined as sum of correlations (weighted) across all genes, or genes within a module
-  wK = rowSums(withinConn[,genesY])[genes]
+  wK = rowSums(withinConn[,genes])[genes]
   bK = rowSums(betweenConn[,genesY])[genes]
   data <- data.frame(wK = wK, bK = bK, soc = soc)
   p <- ggplot(data,aes(x=wK,y=bK,color=soc))+
@@ -226,6 +160,25 @@ connPlots <- function(kWithin,kBetween,socInd,genesY = NULL,genesX = NULL){
 
 cPlot <- lapply(seq(1,6,by=1),function(i) connPlots(i+6,i,i))
 
+#Calculate sociality index, relate to evolutionary information
+socInd <- function(kWithin,kBetween,genesX=NULL,genesY=NULL){
+  withinConn <- conns[[kWithin]]
+  betweenConn <- conns[[kBetween]]
+  
+  #If we aren't working within modules
+  if (is.null(genesX)) genesX = rownames(withinConn)
+  if (is.null(genesY)) genesY = colnames(betweenConn)
+  
+  #Connectivity measurements within modules
+  wK = rowSums(withinConn[,genesX])[genesX]
+  bK = rowSums(betweenConn[,genesY])[genesX]
+  
+  #Simplist way is just the difference. If they are highly correlated, may be good to do the residual
+  socInd = bK - wK
+  return(socInd)
+}
+
+sindex = lapply(seq(1,6,by=1),function(x) socInd(i+6,i))
 
 #Previously derived GO annotations
 go <- read.csv("~/Writing/Data/NurseSpecialization_transcriptomicData/GOannotation.csv")
