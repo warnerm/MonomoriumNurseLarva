@@ -108,47 +108,49 @@ minK = 2
 boots = 100
 nTest = maxK - minK + 1
 
-#Read in fpkm data
-data = pd.read_csv("~/Nurse_Larva/fpkm.csv",index_col = 0)
-data = data.filter(regex='CG',axis=1) #Keep only worker larvae samples
-data = data.apply(hypsine) #hyperbolic sine, similar to log transform
-data = quantileNormalize(data.transpose())
-data = data.transpose()
-pearson = data.transpose().corr(method = 'pearson')
-dist = 1 - abs(pearson)
+def run(code):
+    data = pd.read_csv("~/Nurse_Larva/fpkm.csv", index_col=0)
+    data = data.filter(regex=code, axis=1)  # Keep only worker larvae samples
+    data = data.apply(hypsine)  # hyperbolic sine, similar to log transform
+    data = quantileNormalize(data.transpose())
+    data = data.transpose()
+    pearson = data.transpose().corr(method='pearson')
+    dist = 1 - abs(pearson)
 
-num_cores = multiprocessing.cpu_count()
+    num_cores = multiprocessing.cpu_count()
 
-f = open('findK_sil_gaster.txt','w')
-f.write("K\tMeanSil\n")
-f.close()
+    f = open('findK_sil'+code+'.txt', 'w')
+    f.write("K\tMeanSil\n")
+    f.close()
 
-f = open('findK_cluster_gaster.txt','w')
-for n in range(np.shape(data)[0]):
-    f.write('gene' + str(n))
-    if n < (np.shape(data)[0] - 1):
-        f.write('\t')
-f.write('\n')
-f.close()
-
-#Run algorithm for a range of K values. At each K value, return the configuration that minimizes sum of squares
-for kval in range(minK,maxK+1):
-    print kval
-    results = Parallel(n_jobs=num_cores)(delayed(performCluster)(b,kval) for b in range(boots))
-
-    #flatten list, extract clusters and silhouette values
-    flat = [item for sublist in results for item in sublist]
-    sil = flat[0:len(flat):2]
-    clusterID = flat[1:len(flat):2]
-    optimal = np.argmax(sil)
-    f = open('findK_cluster_gaster.txt', 'a')
+    f = open('findK_cluster'+code+'.txt', 'w')
     for n in range(np.shape(data)[0]):
-        f.write(str(clusterID[optimal][n]))
+        f.write('gene' + str(n))
         if n < (np.shape(data)[0] - 1):
             f.write('\t')
     f.write('\n')
     f.close()
 
-    f = open('findK_sil_gaster.txt', 'a')
-    f.write(str(kval)+'\t'+str(sil[optimal])+'\n')
-    f.close()
+    # Run algorithm for a range of K values. At each K value, return the configuration that minimizes sum of squares
+    for kval in range(minK, maxK + 1):
+        print kval
+        results = Parallel(n_jobs=num_cores)(delayed(performCluster)(b, kval) for b in range(boots))
+
+        # flatten list, extract clusters and silhouette values
+        flat = [item for sublist in results for item in sublist]
+        sil = flat[0:len(flat):2]
+        clusterID = flat[1:len(flat):2]
+        optimal = np.argmax(sil)
+        f = open('findK_cluster'+code+'.txt', 'a')
+        for n in range(np.shape(data)[0]):
+            f.write(str(clusterID[optimal][n]))
+            if n < (np.shape(data)[0] - 1):
+                f.write('\t')
+        f.write('\n')
+        f.close()
+
+        f = open('findK_sil'+code+'.txt', 'a')
+        f.write(str(kval) + '\t' + str(sil[optimal]) + '\n')
+        f.close()
+
+run('W_L')
