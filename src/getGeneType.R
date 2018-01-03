@@ -2,7 +2,6 @@ library(reshape)
 library(reshape2)
 library(plyr)
 
-
 load("CorResults.RData") #After running 'corApproach.R' on cluster
 #Tabulate type (posSocial, negSocial, etc of social interactions)
 tabType <- function(d){
