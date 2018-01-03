@@ -1,4 +1,6 @@
 #File takes output of 'corApproach.R' and 'getGeneType.R' for further analysis
+setwd("~/Data/Nurse_Larva/")
+
 library(plyr)
 library(reshape2)
 library(ggplot2)
@@ -27,23 +29,25 @@ theme4 = theme(axis.text=element_text(size=13),
                   axis.title.x=element_text(margin=margin(t=10,r=0,b=0,l=0)),
                   axis.title.y=element_text(margin=margin(t=0,r=10,b=0,l=0)))
 
-load("~/Data/Nurse_Larva/socDet.RData")
-load("~/Data/Nurse_Larva/corResults.RData")
+load("socDet.RData")
+load("corResults.RData")
 
-#First, number of social vs NS vs control genes
-names(socDet) = c("QRhead","QRabdomen","head","abdomen","larva_QRhead","larva_QRabd")
-numbers <- lapply(socDet,function (x) table(x$geneType))
+#Number of significant correlation with larval profiles of nurse DEGs by larval stage
+numbers <- lapply(socDet,function (x) c(sum(x$geneType!="social"),sum(x$geneType=="social")))
+numbers <- numbers[!grepl('LARV',names(numbers))] #Remove larval numbers
 num = ldply(numbers)
 m <- melt(num,id.vars=".id")
+levels(m$variable) = c('not correlated','correlated')
 
 p <- ggplot(m,aes(x=.id,y=value,fill=variable))+
-  geom_bar(stat="identity",position=position_dodge())+
-  scale_fill_manual(name="binomial result",values = Soc_palette)+theme_bw()+
+  geom_bar(stat="identity")+
+  scale_fill_manual(name="expression profile correlated with larvae?",values = Soc_palette)+theme_bw()+
   ylab("number of genes")+
   xlab("tissue")
 
 png("~/Writing/Figures/NurseLarva/corApproach/NumGenesBinom.png",width=4000,height=4000,res=300)
-p + theme_all
+p + theme_all+theme(legend.position = 'bottom',plot.title = element_text(size=20))+
+  ggtitle('correlation of larval and nurse expression profiles,\nfor genes differentially expressed in nurses by larval stage')
 dev.off()
 
 #Numbers of negative and positive connections
@@ -55,9 +59,9 @@ PlotPosNeg <- function(x,label){
   return(p)
 }
 
-label = c("A","B","C","D")
+label = names(socDet)
 plots <- mapply(PlotPosNeg,socDet,label,SIMPLIFY = FALSE)
-png("~/Writing/Figures/NurseLarva/corApproach/PosNegNumbers.png",width=4000,height=4000,res=300)
+png("~/Writing/Figures/NurseLarva/corApproach/PosNegNumbers.png",width=4000,height=8000,res=300)
 do.call("grid.arrange", c(plots, ncol=2))
 dev.off()
 
