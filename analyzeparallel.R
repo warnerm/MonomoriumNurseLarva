@@ -7,7 +7,7 @@ library(grid)
 library(pBrackets)
 library(ggplot2)
 
-PS_palette = c("#deebf7","#9ecae1","#4292c6","#2171b5","#084594")
+PS_palette = c("white","#deebf7","#9ecae1","#4292c6","#2171b5","#084594")
 Soc_palette = c("#dadaeb","#9e9ac8","#6a51a3")
 
 theme_all = theme(axis.text=element_text(size=13),
@@ -32,32 +32,94 @@ bootMean <- function(data,boots){
   return(res)
 }
 
-df <- read.csv("~/Data/Nurse_Larva/workerQR_500000_1000_connStrengths.csv")
-dfR <- read.csv("~/Data/Nurse_Larva/random_500000_1000_connStrengths.csv")
+compareNgene <- function(nGene){
+  df <- read.csv(paste("~/Data/Nurse_Larva/workerQR_1000000_",nGene,"_connStrengths.csv",sep=""))
+  dfR <- read.csv(paste("~/Data/Nurse_Larva/random_1000000_",nGene,"_connStrengths.csv",sep=""))
+  df = df[,-c(1:2)]
+  dfR = dfR[,-c(1,2)]
+  colnames(df)[2:10]=colnames(dfR)[2:10]=c("L_L","H_L","G_L","L_H","H_H","G_H","L_G","H_G","G_G")
+  colnames(dfR)[2:10]=paste(colnames(dfR)[2:10],"random",sep="")
+  
+  df[,2:10]=df[,2:10]/max(df[,2:10])
+  dfR[,2:10]=dfR[,2:10]/max(dfR[,2:10])
+  dfB = merge(df,dfR,by="gene",all=TRUE)
+  dfM = melt(dfB,id.vars="gene")
+  dfM$cond = "focal"
+  dfM$cond[grepl("random",dfM$variable)]="random"
+  dfM$variable=gsub("random","",dfM$variable)
+  dfM = droplevels(dfM)
+  dfM$variable=factor(dfM$variable,levels=c("L_L","H_H","G_G","H_G","G_H","L_H","L_G","H_L","G_L"))
+  levels(dfM$variable)=c("larva-larva","head-head","abd-abd",
+                         "head-abd","abd-head","larva-head",
+                         "larva-abd","head-larva","abd-larva")
+  
+  
+  p <- ggplot(dfM,aes(x=variable,y=value,fill=cond))+
+    geom_boxplot(notch=TRUE)+theme_bw()+theme(legend.position=c(0.8,0.95))+
+    scale_fill_manual(name="nurse type",values=c("dodgerblue2","firebrick3"))+
+    ylab("relative connection strength")+
+    geom_vline(xintercept=3.5,linetype=2)+
+    geom_vline(xintercept=5.5,linetype=2)+
+    annotate("text",x=4.5,y=0.9,lineheight=0.9,vjust=0.75,hjust=0.5,label='atop(bold("between\n tissue"))',size=6,parse=TRUE)+
+    annotate("text",x=7.5,y=0.9,label='atop(bold("social"))',size=6,parse=TRUE)+
+    annotate("text",x=2,y=0.9,lineheight=0.9,vjust=0.75,label='atop(bold("within\ntissue"))',size=6,parse=TRUE)+
+    xlab("connection type")+theme(legend.position="top",legend.justification = c(0.5,0))+
+    theme(axis.title.x=element_text(margin=margin(15,0,0,0)))+
+    theme(axis.title.y=element_text(margin=margin(0,15,0,0)))+
+    theme(axis.text.x=element_text(angle=-45,vjust=1,hjust=0))+
+    ggtitle(nGene)
+  
+    df$SIL_WH=df[,5] - df[,2]
+    df$SIL_WG=df[,8] - df[,2]
+    df$SIWH=df[,3]- df[,6]
+    df$SIWG=df[,4] - df[,10]
+    df$SIO = ((df$SIL_WH+df$SIL_WG)/2+df$SIWH+df$SIWG)/3
+    df$SIL = (df[,5] + df[,8])/2 - df[,2]
+    
+    f.est <- read.csv("~/Data/MKtestConstraintOneAlpha.csv")
+    colnames(f.est) = c("gene","f.est")
+    dfAll <- merge(df,f.est,by="gene")
+    
+    return(list(p,dfAll))
+}
+
+tesCor <- function(dfAll){
+  print(cor.test(dfAll$f.est,dfAll$SIL_WH))
+  print(cor.test(dfAll$f.est,dfAll$SIL_WG))
+  print(cor.test(dfAll$f.est,dfAll$SIWG))
+  print(cor.test(dfAll$f.est,dfAll$SIWH))
+}
+
+tesCorConn <- function(dfAll){
+  print(cor.test(dfAll$f.est,dfAll$L_L))
+  print(cor.test(dfAll$f.est,dfAll$L_H))
+  print(cor.test(dfAll$f.est,dfAll$L_G))
+  print(cor.test(dfAll$f.est,dfAll$H_L))
+  print(cor.test(dfAll$f.est,dfAll$H_G))
+  print(cor.test(dfAll$f.est,dfAll$H_H))
+  print(cor.test(dfAll$f.est,dfAll$G_L))
+  print(cor.test(dfAll$f.est,dfAll$G_G))
+  print(cor.test(dfAll$f.est,dfAll$G_H))
+}
+
+g500 = compareNgene(500)
+g1000 = compareNgene(1000)
+g2000 = compareNgene(2000)
+g5000 = compareNgene(5000)
+tesCor(g500[[2]])
+tesCorConn(g500[[2]])
+
+lm <- glm(log(f.est )~ L_H + L_G + H_H + H_G + H_L + G_L + G_H + G_G,data=g1000[[2]])
+drop1(lm,.~.,test="Chi") 
+
+lm <- glm(log(f.est) ~ SIWH + SIWG + SIL_WH + SIL_WG, data = g1000[[2]])
+
+df <- read.csv("~/Data/Nurse_Larva/workerQR_1000000_500_connStrengths.csv")
+dfR <- read.csv("~/Data/Nurse_Larva/random_1000000_500_connStrengths.csv")
 df = df[,-c(1:2)]
 dfR = dfR[,-c(1,2)]
-colnames(df)[2:10]=colnames(dfR)[2:10]=c("L_L","WH_L","WG_L","L_WH","WH_WH","WG_WH","L_WG","WH_WG","WG_WG")
+colnames(df)[2:10]=colnames(dfR)[2:10]=c("L_L","H_L","G_L","L_H","H_H","G_H","L_G","H_G","G_G")
 colnames(dfR)[2:10]=paste(colnames(dfR)[2:10],"random",sep="")
-dfB = merge(df,dfR,by="gene",all=TRUE)
-dfB2 = dfB[!is.na(dfB$L_L)&!is.na(dfB$L_Lrandom),]
-for (i in 2:10){
-  print(colnames(dfB2)[i])
-  print(cor.test(dfB2[,i],dfB2[,i+9]))
-}
-
-allD = list(df,dfR)
-for (i in 1:2){
-  allD[[i]]$SIL_WH=allD[[i]][,5] - allD[[i]][[2]]
-  allD[[i]]$SIL_WG=allD[[i]][,8] - allD[[i]][[2]]
-  allD[[i]]$SIWH=allD[[i]][,3]- allD[[i]][[6]]
-  allD[[i]]$SIWG=allD[[i]][,4] - allD[[i]][[10]]
-}
-
-allD = merge(allD[[1]],allD[[2]],by="gene",all=TRUE)
-wilcox.test(allD$SIL_WH.x,allD$SIL_WH.y,paired = FALSE,alternative="greater")
-wilcox.test(allD$SIL_WG.x,allD$SIL_WG.y,paired = FALSE,alternative="greater")
-wilcox.test(allD$SIWH.x,allD$SIWH.y,paired = FALSE,alternative="greater")
-wilcox.test(allD$SIWG.x,allD$SIWG.y,paired = FALSE,alternative="greater")
 
 df[,2:10]=df[,2:10]/max(df[,2:10])
 dfR[,2:10]=dfR[,2:10]/max(dfR[,2:10])
@@ -67,10 +129,29 @@ dfM$cond = "focal"
 dfM$cond[grepl("random",dfM$variable)]="random"
 dfM$variable=gsub("random","",dfM$variable)
 dfM = droplevels(dfM)
-dfM$variable=factor(dfM$variable,levels=c("L_L","WH_WH","WG_WG","WH_WG","WG_WH","L_WH","L_WG","WH_L","WG_L"))
+dfM$variable=factor(dfM$variable,levels=c("L_L","H_H","G_G","H_G","G_H","L_H","L_G","H_L","G_L"))
+levels(dfM$variable)=c("larva-larva","head-head","abd-abd",
+                          "head-abd","abd-head","larva-head",
+                          "larva-abd","head-larva","abd-larva")
 
-ggplot(dfM,aes(x=variable,y=value,fill=cond))+
-  geom_boxplot(notch=TRUE)
+
+p <- ggplot(dfM,aes(x=variable,y=value,fill=cond))+
+  geom_boxplot(notch=TRUE)+theme_bw()+theme_all+theme(legend.position=c(0.8,0.95))+
+  scale_fill_manual(name="nurse type",values=c("dodgerblue2","firebrick3"))+
+  ylab("relative connection strength")+
+  geom_vline(xintercept=3.5,linetype=2)+
+  geom_vline(xintercept=5.5,linetype=2)+
+  annotate("text",x=4.5,y=0.9,lineheight=0.9,vjust=0.75,hjust=0.5,label='atop(bold("between\n tissue"))',size=6,parse=TRUE)+
+  annotate("text",x=7.5,y=0.9,label='atop(bold("social"))',size=6,parse=TRUE)+
+  annotate("text",x=2,y=0.9,lineheight=0.9,vjust=0.75,label='atop(bold("within\ntissue"))',size=6,parse=TRUE)+
+  xlab("connection type")+theme(legend.position="top",legend.justification = c(0.5,0))+
+  theme(axis.title.x=element_text(margin=margin(15,0,0,0)))+
+  theme(axis.title.y=element_text(margin=margin(0,15,0,0)))+
+  theme(axis.text.x=element_text(angle=-45,vjust=1,hjust=0))
+
+png("~/Writing/Figures/NurseLarva/Fig1b.png")
+p
+dev.off()
 
 for (lev in levels(dfM$variable)){
   print(lev)
@@ -80,42 +161,309 @@ for (lev in levels(dfM$variable)){
 #################
 ##Continuing with only focal nurse data; using QR and QL together
 #################
-
-
-
-
-
-
-
-
-load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
-exprH = rowSums(fpkm[,grepl("C.*_WH",colnames(fpkm))])/sum(grepl("C.*_WH",colnames(fpkm)))
-exprG = rowSums(fpkm[,grepl("C.*_WG",colnames(fpkm))])/sum(grepl("C.*_WG",colnames(fpkm)))
-exprL = rowSums(fpkm[,grepl("W_L",colnames(fpkm))])/sum(grepl("W_L",colnames(fpkm)))
-exprQH = rowSums(fpkm[,grepl("_QH",colnames(fpkm))])/sum(grepl("_QH",colnames(fpkm)))
-exprQG = rowSums(fpkm[,grepl("_QG",colnames(fpkm))])/sum(grepl("_QG",colnames(fpkm)))
-expr = data.frame(exprH=exprH,exprG=exprG,exprL=exprL,
-                  exprQH=exprQH,exprQG=exprQG,gene=names(exprH))
-
-df = df[,c(1,2,4:11)]
-df <- read.csv("~/Data/Nurse_Larva/workerQR_500000_1000_connStrengths.csv")
+df <- read.csv("~/Data/Nurse_Larva/workerQR_1000000_5000_connStrengths.csv")
 df = df[,-c(1:2)]
-colnames(df)[2:10]=colnames(dfR)[2:10]=c("L_L","WH_L","WG_L","L_WH","WH_WH","WG_WH","L_WG","WH_WG","WG_WG")
+colnames(df)[2:10]=c("L_L","WH_L","WG_L","L_WH","WH_WH","WG_WH","L_WG","WH_WG","WG_WG")
+df$SIL_WH=df[,5] - df[,2]
+df$SIL_WG=df[,8] - df[,2]
+df$SIWH=df[,3]- df[,6]
+df$SIWG=df[,4] - df[,10]
+df$SIO = ((df$SIL_WH+df$SIL_WG)/2+df$SIWH+df$SIWG)/3
+df$SIL = (df[,5] + df[,8])/2 - df[,2]
+
+##################
+###Look at correlation with constraint
+##################
+f.est <- read.csv("~/Data/MKtestConstraintOneAlpha.csv")
+colnames(f.est) = c("gene","f.est")
+dfAll <- merge(df,f.est,by="gene")
+
+p1 <- ggplot(dfAll,aes(x=SIWH,y=1-f.est))+
+  geom_point(size=0.8)+
+  theme_bw()+ylab("")+xlab("")+
+  scale_x_continuous(breaks=c(-0.06,-0.03,0,0.03),limits=c(-0.08,0.04))+
+  ggtitle("nurse head")+
+  geom_smooth(method="lm",se=FALSE,color="red")+
+  annotate("text",x=-0.045,y=0.22,label="r = - 0.096\np = 0.018",size=5)
+
+p2 <- ggplot(dfAll,aes(x=SIWG,y=1-f.est))+
+  geom_point(size=0.8)+
+  theme_bw()+ylab("")+xlab("")+
+  scale_x_continuous(breaks=c(-0.06,-0.03,0,0.03),limits=c(-0.08,0.04))+
+  geom_smooth(method="lm",se=FALSE,color="red")+
+  ggtitle("nurse abd")+
+  annotate("text",x=-0.045,y=0.22,label="r = - 0.102\np = 0.011",size=5)
+
+p4 <- ggplot(dfAll,aes(x=SIL_WH,y=1-f.est))+
+  geom_point(size=0.8)+
+  theme_bw()+
+  scale_x_continuous(breaks=c(-0.09,-0.06,-0.03,0),limits=c(-0.1,0.02))+
+  ylab("")+xlab("")+
+  geom_smooth(method="lm",se=FALSE,color="red")+
+  ggtitle("larva to head")+
+  annotate("text",x=-0.06,y=0.22,label="r = - 0.055\np = 0.175",size=5)
+
+p3 <- ggplot(dfAll,aes(x=SIL_WG,y=1-f.est))+
+  geom_point(size=0.8)+
+  theme_bw()+
+  scale_x_continuous(breaks=c(-0.09,-0.06,-0.03,0),limits=c(-0.1,0.02))+ylab("")+xlab("")+
+  geom_smooth(method="lm",se=FALSE,color="red")+
+  ggtitle("larva to abd")+
+  annotate("text",x=-0.06,y=0.22,label="r = - 0.113\np = 0.005",size=5)
+theme_f2 = theme(plot.title=element_text(size=20,hjust=0.5),
+                 plot.margin=margin(0.6,0,0,0),
+                 axis.text=element_text(size=12),
+                 axis.title=element_text(size=15),
+                 legend.position = "none")
+png("~/Writing/Figures/NurseLarva/Fig2.png",width=3000,height=1500,res=300)
+grid.arrange(p1+theme_f2,
+             p2+theme_f2,
+             p3+theme_f2,
+             p4+theme_f2,
+             bottom = textGrob("sociality index", gp=gpar(fontsize=23,font=8),hjust=0.3,vjust=0),
+             left = textGrob("constraint", rot = 90, vjust = 1,gp=gpar(fontsize=23,font=8)),nrow=1)
+dev.off()
+
+m = melt(dfAll[,c(1,11:14,17)],id.vars=c("gene","f.est"))
+
+m$quantile="0-25"
+for (i in 1:nrow(m)){
+  if (m$value[i] > quantile(m$value[m$variable==m$variable[i]],0.25)){
+    if (m$value[i] > quantile(m$value[m$variable==m$variable[i]],0.5)){
+      if (m$value[i] > quantile(m$value[m$variable==m$variable[i]],0.75)){
+        m$quantile[i]="75-100"
+      } else {
+        m$quantile[i]="50-75"
+      }
+    } else {
+      m$quantile[i]="25-50"
+    }
+  }
+}
+
+ggplot(m,aes(x=variable,y=1-log(f.est),fill=quantile))+
+  geom_boxplot(notch=TRUE)
+
+pc <- prcomp()
+
+###########
+##Adding phylostrata
+ext <- read.csv("~/Downloads/msx123_Supp (1)/MpharAnn.csv")
+dfAll = merge(ext,df,by.x="Gene",by.y="gene")
 
 
-df$SIL = df$Lbetween - df$Lwithin
-df$SIWH = df$WHbetween - df$WHwithin
-df$SIWG = df$WGbetween - df$WGwithin
-df$SI_Overall = (df$SIL + df$SIWH + df$SIWG)/3
-df$SIWH_worker = df$WH.WG - df$WHwithin
-df$SIWG_worker = df$WG.WH - df$WGwithin
+dfAll$PS2 = factor(dfAll$PS2, levels = c("cellular","eukaryote","bilaterian","insect","hymenopteran_ant"))
+dfAll = dfAll[!is.na(dfAll$PS2),]
+levels(dfAll$PS2)[5]="hymenopteran"
+#levels(dfAll$PS2)[4]="hymenopteran"
+dfAll$PS2 = droplevels(dfAll$PS2)
+dfAll$PS2=as.character(dfAll$PS2)
+dfAll$PS2[dfAll$Raw.PS=="Monomorium pharaonis"] = "M. pharaonis"
+dfAll$PS2 = factor(dfAll$PS2,levels = c("cellular","eukaryote","bilaterian","insect","hymenopteran","M. pharaonis"))
 
-df <- merge(df,expr,by="gene")
-dfAll = df
+lm <- glm(SIWH ~ PS2, data=dfAll)
+lm <- glm(SIWG ~ PS2, data=dfAll)
+
+summary(glht(lm, mcp(PS2="Tukey"))) 
+
+d2 <- melt(dfAll[,c(1,27,37:40)],id.vars=c("Gene","PS2"))
+d2$tissue="larva-head"
+d2$tissue[grepl("SIL_WG",d2$variable)]="larva-abd"
+d2$tissue[grepl("SIWG",d2$variable)]="abdomen"
+d2$tissue[grepl("SIWH",d2$variable)]="head"
+
+rowN = c()
+for (i in 1:6){
+  rowN = c(rowN,paste(levels(dfAll$PS2)[i]," (",sum(dfAll$PS2==levels(dfAll$PS2)[i]),")",sep=""))
+}
+
+p1 <- ggplot(d2,aes(x=tissue,y=value,fill=PS2))+geom_boxplot(notch=TRUE)+
+  theme_bw()+ylab("sociality index")+xlab("tissue")+ylim(-0.1,0.1)+
+  scale_fill_manual(values=PS_palette,name = "phylostrata",labels=rowN)+
+  theme(axis.text=element_text(size=20),
+        axis.title=element_text(size=25),
+        legend.text=element_text(size=11),
+        legend.title=element_text(size=14),
+        legend.position = "right")
+
+png("~/Writing/Figures/NurseLarva/Fig3a.png",width=2500,height=2000,res=300)
+grid.arrange(p1 + theme(axis.text=element_text(size=17),
+                        axis.title=element_text(size=22),
+                        axis.title.x=element_text(margin=margin(13,0,0,0)),
+                        legend.text=element_text(size=15),
+                        legend.title=element_text(size=20),
+                        legend.position = c(.05, .98),
+                        legend.justification = c("left", "top"),
+                        legend.box.just = "left",
+                        legend.margin = margin(6, 6, 6, 6),
+                        legend.background=element_rect(fill=FALSE),
+                        plot.margin=unit(c(0.5,0.5,0.5,0.5),"cm"),
+                        axis.title.y=element_text(margin=margin(0,10,0,0))))
+dev.off()
+
+##Add f back in so dataframe has sociality, f and PS
+dfAll <- merge(dfAll,f.est,by.x="Gene",by.y="gene")
+d4 <- ddply(dfAll,~PS2,summarise,
+            meanSI = mean(SIO),
+            c1B = quantile(bootMean(SIO,1000),0.025),
+            c2B = quantile(bootMean(SIO,1000),0.975),
+            meanF = mean(f.est),
+            c1W = quantile(bootMean(f.est,1000),0.025),
+            c2W = quantile(bootMean(f.est,1000),0.975))
+
+p2 <- ggplot(d4[!is.na(d4$PS2),],aes(x=meanSI,y=1-meanF,fill=PS2))+
+  geom_point(aes(fill=PS2),pch=21,color="black",size=7)+
+  geom_errorbarh(aes(xmin=c1B,xmax=c2B))+
+  geom_errorbar(aes(ymin=1-c1W,ymax=1-c2W))+ylim(0.8,0.95)+
+  theme_bw()+xlab("average sociality index")+ylab("constraint")+
+  scale_fill_manual(values=PS_palette,name="phylostrata")+
+  #scale_color_manual(values=PS_palette,name="phylostrata")+
+  theme(legend.position="none")+
+  annotate("text",x=-0.0325,y=0.93,label="eukaryote",size=6)+
+  annotate("text",x=-0.034,y=0.879,label="bilaterian",size=6)+
+  annotate("text",x=-0.0295,y=0.908,label="cellular",size=6)+
+  annotate("text",x=-0.029,y=0.845,label="hymenopteran",size=6)
+
+png("~/Writing/Figures/NurseLarva/Fig3b.png",width=2000,height=2000,res=300)
+grid.arrange(p2+theme(plot.margin=unit(c(0.5,1,0.5,0.5),"cm"),
+                      axis.text=element_text(size=17),
+                      axis.title=element_text(size=22),
+                      axis.title.x=element_text(margin=margin(10,0,0,0)),
+                      axis.title.y=element_text(margin=margin(0,10,0,0))))
+dev.off()
+
+png("~/Writing/Figures/NurseLarva/Fig3.png",width=4000,height=2000,res=300)
+grid.arrange(p1 + theme(axis.text=element_text(size=15),
+                        axis.title=element_text(size=20),
+                        axis.title.x=element_text(margin=margin(13,0,0,0)),
+                        legend.text=element_text(size=13),
+                        legend.title=element_text(size=17),
+                        legend.position = c(.05, .98),
+                        legend.justification = c("left", "top"),
+                        legend.box.just = "left",
+                        legend.margin = margin(6, 6, 6, 6),
+                        legend.background=element_rect(fill=FALSE),
+                        plot.margin=unit(c(0.5,0.5,0.5,0.5),"cm"),
+                        axis.title.y=element_text(margin=margin(0,10,0,0)))+
+               annotate("text",x=3,y=0.08,label="A",size=11),
+             p2+theme(plot.margin=unit(c(0.5,0.5,0.5,0.5),"cm"),
+                      axis.text=element_text(size=15),
+                      axis.title=element_text(size=20),
+                      axis.title.x=element_text(margin=margin(10,0,0,0)),
+                      axis.title.y=element_text(margin=margin(0,10,0,0)))+
+               annotate("text",x=-0.04,y=0.95 - 0.02*(3/5),label="B",size=11),nrow=1)
+dev.off()
+
+
+
+p1 <- ggplot(dfAll,aes(x=SIWH,y=BSnIPRE.est))+
+  geom_point(size=0.8)+
+  theme_bw()+ylab("")+xlab("")+
+  scale_x_continuous(breaks=c(-0.06,-0.03,0,0.03),limits=c(-0.08,0.04))+
+  theme(axis.text=element_text(size=15),
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=15),
+        legend.title=element_text(size=20),
+        legend.position = "none")+
+  ggtitle("a. nurse head")+
+  geom_smooth(method="lm",se=FALSE,color="red")+
+  annotate("text",x=-0.045,y=0.22,label="r = - 0.096\np = 0.018",size=5)
+
+p2 <- ggplot(dfAll,aes(x=SIWG,y=BSnIPRE.est))+
+  geom_point(size=0.8)+
+  theme_bw()+ylab("")+xlab("")+
+  scale_x_continuous(breaks=c(-0.06,-0.03,0,0.03),limits=c(-0.08,0.04))+
+  theme(axis.text=element_text(size=15),
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=15),
+        legend.title=element_text(size=20),legend.position = "none")+
+  geom_smooth(method="lm",se=FALSE,color="red")+
+  ggtitle("b. nurse abdomen")+
+  annotate("text",x=-0.045,y=0.22,label="r = - 0.102\np = 0.011",size=5)
+
+p3 <- ggplot(dfAll,aes(x=SIL_WH,y=BSnIPRE.est))+
+  geom_point(size=0.8)+
+  theme_bw()+
+  scale_x_continuous(breaks=c(-0.09,-0.06,-0.03,0))+
+  theme(axis.text=element_text(size=15),
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=15),
+        legend.title=element_text(size=20),
+        legend.position = "none")+ylab("")+xlab("")+
+  geom_smooth(method="lm",se=FALSE,color="red")+
+  ggtitle("c. larva")+
+  annotate("text",x=-0.06,y=0.22,label="r = - 0.091\np = 0.025",size=5)
+
+p4 <- ggplot(dfAll,aes(x=SIL_WG,y=BSnIPRE.est))+
+  geom_point(size=0.8)+
+  theme_bw()+
+  scale_x_continuous(breaks=c(-0.09,-0.06,-0.03,0))+
+  theme(axis.text=element_text(size=15),
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=15),
+        legend.title=element_text(size=20),
+        legend.position = "none")+ylab("")+xlab("")+
+  geom_smooth(method="lm",se=FALSE,color="red")+
+  ggtitle("c. larva")+
+  annotate("text",x=-0.06,y=0.22,label="r = - 0.091\np = 0.025",size=5)
+
+png("~/Writing/Figures/NurseLarva/FigS_alpha.png",width=3000,height=1500,res=300)
+grid.arrange(p1+theme(plot.title=element_text(size=20,hjust=0.5)),
+             p2+theme(plot.title=element_text(size=20,hjust=0.5)),
+             p3+theme(plot.title=element_text(size=20,hjust=0.5)),
+             p4+theme(plot.title=element_text(size=20,hjust=0.5)),
+             bottom = textGrob("sociality index", gp=gpar(fontsize=23,font=8),hjust=0.3,vjust=-0.5),
+             left = textGrob("constraint", rot = 90, vjust = 1.5,gp=gpar(fontsize=23,font=8)),nrow=1)
+dev.off()
+
+
+
+m = melt(dfAll[,c(1,19,37:40)],id.vars=c("Gene","BSnIPRE.est"))
+
+m$quantile="0-25"
+for (i in 1:nrow(m)){
+  if (m$value[i] > quantile(m$value[m$variable==m$variable[i]],0.25)){
+    if (m$value[i] > quantile(m$value[m$variable==m$variable[i]],0.5)){
+      if (m$value[i] > quantile(m$value[m$variable==m$variable[i]],0.75)){
+        m$quantile[i]="75-100"
+      } else {
+        m$quantile[i]="50-75"
+      }
+    } else {
+      m$quantile[i]="25-50"
+    }
+  }
+}
+
+ggplot(m,aes(x=variable,y=BSnIPRE.est,fill=quantile))+
+  geom_boxplot(notch=TRUE)
+
+
+
+m = melt(dfAll[,c(1,19,27,37:40,43)],id.vars=c("Gene","BSnIPRE.est","f.est","PS2"))
+
+m$quantile="0-25"
+for (i in 1:nrow(m)){
+  if (m$value[i] > quantile(m$value[m$variable==m$variable[i]],0.25)){
+    if (m$value[i] > quantile(m$value[m$variable==m$variable[i]],0.5)){
+      if (m$value[i] > quantile(m$value[m$variable==m$variable[i]],0.75)){
+        m$quantile[i]="75-100"
+      } else {
+        m$quantile[i]="50-75"
+      }
+    } else {
+      m$quantile[i]="25-50"
+    }
+  }
+}
+
+ggplot(m[m$variable=="SIWG",],
+       aes(x=BSnIPRE.est,y=f.est,color=quantile,shape=PS2))+
+  geom_point()
 
 d2 <- melt(df[,c(1,3:11)],id.vars="gene")
 d2$tissue="larva"
-d2$tissue[grepl("^WG",d2$variable)]="nurse gaster"
+d2$tissue[grepl("^WG",d2$variable)]="nurse abdomen"
 d2$tissue[grepl("^WH",d2$variable)]="nurse head"
 d2$connection.type = "within tissue"
 d2$connection.type[grepl("between",d2$variable)]="social"
@@ -278,54 +626,6 @@ png("~/Writing/Figures/NurseLarva/FigS3.png",width=3000,height=1000,res=300)
 grid.arrange(p1+theme_all,
              p2+theme_all,
              p3+theme_all,nrow=1)
-dev.off()
-
-########
-##Adding MKtest constraint
-f.est <- read.csv("~/Data/MKtestConstraintOneAlpha.csv")
-colnames(f.est) = c("gene","f.est")
-dfAll <- merge(df,f.est,by="gene")
-
-p1 <- ggplot(dfAll,aes(x=SIWH,y=1-f.est))+
-  geom_point(size=0.8)+
-  theme_bw()+ylab("")+xlab("")+
-  theme(axis.text=element_text(size=15),
-        axis.title=element_text(size=20),
-        legend.text=element_text(size=15),
-        legend.title=element_text(size=20),
-        legend.position = "none")+
-  ggtitle("nurse head")+
-  geom_smooth(method="lm",se=FALSE,color="red")+
-  annotate("text",x=-0.065,y=0.25,label="r = - 0.129\np = 0.001",size=5)
-
-p2 <- ggplot(dfAll,aes(x=SIWG,y=1-f.est))+
-  geom_point(size=0.8)+
-  theme_bw()+ylab("")+xlab("")+
-  theme(axis.text=element_text(size=15),
-        axis.title=element_text(size=20),
-        legend.text=element_text(size=15),
-        legend.title=element_text(size=20),legend.position = "none")+
-  geom_smooth(method="lm",se=FALSE,color="red")+
-  ggtitle("nurse gaster")+
-  annotate("text",x=-0.08,y=0.25,label="r = - 0.131\np = 0.001",size=5)
-
-p3 <- ggplot(dfAll,aes(x=SIL,y=1-f.est))+
-  geom_point(size=0.8)+
-  theme_bw()+
-  theme(axis.text=element_text(size=15),
-        axis.title=element_text(size=20),
-        legend.text=element_text(size=15),
-        legend.title=element_text(size=20),
-        legend.position = "none")+ylab("")+xlab("")+
-  geom_smooth(method="lm",se=FALSE,color="red")+
-  ggtitle("larva")+
-  annotate("text",x=-0.11,y=0.25,label="r = - 0.086\np = 0.034",size=5)
-png("~/Writing/Figures/NurseLarva/Fig2.png",width=3000,height=1500,res=300)
-grid.arrange(p1+theme(plot.title=element_text(size=20,hjust=0.5)),
-             p2+theme(plot.title=element_text(size=20,hjust=0.5)),
-             p3+theme(plot.title=element_text(size=20,hjust=0.5)),
-             bottom = textGrob("sociality index", gp=gpar(fontsize=23,font=8),hjust=0.3,vjust=-0.8),
-             left = textGrob("constraint", rot = 90, vjust = 1.5,gp=gpar(fontsize=23,font=8)),nrow=1)
 dev.off()
 
 ###########
@@ -588,98 +888,6 @@ grid.arrange(p1+
              ncol=1)
 dev.off()
 
-##import annotation information
-annNew <- read.csv("~/Dropbox/monomorium nurses/Amel_Mphar/ThreeWayOGGMap.csv",header=TRUE)
-annMp <- annNew[,c(2,5)]
-colnames(annMp) = c("Gene","uniprot drosophila")
-annMp <- annMp[!duplicated(annMp$Gene),]
-dA <- merge(d,annMp,by="Gene")
-dATop = dA[dA$QH > 18 &dA$SIWH > 0,]
-
-lm <- glm(log(f.est) ~ PS2 + SIWH + exprQG + exprH + exprG,
-          data = dfAll)
-
-lm <- glm(WGwithin~ PS2,data=dfAll)
-
-drop1(lm,.~.,test="Chi") 
-summary(glht(lm, mcp(PS2="Tukey"))) 
-
-
-d2 <- melt(dfAll[,c(1,30:35,27,48)],id.vars=c("Gene","PS2","midF"))
-d2$tissue="Larva"
-d2$tissue[grepl("WG",d2$variable)]="WorkerGaster"
-d2$tissue[grepl("WH",d2$variable)]="WorkerHead"
-
-d2$connection.type = "within"
-d2$connection.type[grepl("between",d2$variable)]="between"
-d3 <- dcast(d2, PS2+tissue+Gene+midF ~ connection.type)
-
-d4 <- ddply(d3,~PS2 + tissue,summarise,
-            meanB = mean(between),
-            c1B = quantile(bootMean(between,1000),0.025),
-            c2B = quantile(bootMean(between,1000),0.975),
-            meanF = mean(within),
-            c1W = quantile(bootMean(within,1000),0.025),
-            c2W = quantile(bootMean(within,1000),0.975))
-
-ggplot(d4,aes(x=meanB,y=meanF,color=PS2,shape=tissue))+
-  geom_point(size=3)+
-  geom_errorbar(aes(ymin=c1W,ymax=c2W))+
-  geom_errorbarh(aes(xmin=c1B,xmax=c2B))+
-  xlab("between")+ylab("within")
-
-########
-##
-corWH = cor(t(fpkm[,grepl("WH",colnames(fpkm))]))
-connWH = data.frame(gene = rownames(corWH),connWH = rowSums(abs(corWH)))
-corWG = cor(t(fpkm[,grepl("WG",colnames(fpkm))]))
-connWG = data.frame(gene = rownames(corWG),connWG = rowSums(abs(corWG)))
-corL = cor(t(fpkm[,grepl("W_L",colnames(fpkm))]))
-connL = data.frame(gene = rownames(corL),connL = rowSums(abs(corL)))
-
-df2 = merge(df,connWH,by="gene")
-df2 = merge(df2,connWG,by="gene")
-df2 = merge(df2,connL,by="gene")
-
-#########
-#GO enrichment of the 100 genes with the highest connectivity in each category, plus the highest social indices in each category
-#Note that the "universe" is defined as the 1000 genes with the highest expression
-load("~/Dropbox/workspace/GODB.RData")
-universe = universe[universe %in% dfAll$Gene]
-
-GOenrich <- function(column){
-  df = dfAll[dfAll$Gene %in% universe,]
-  genes = df$Gene[df[,column] > quantile(df[,column],0.8)]
-  return(GOstatUniverse(genes,universe))
-}
-
-GOdat = list()
-for (i in 30:43){
-  column = colnames(dfAll)[i]
-  GOdat[[column]] = GOenrich(column)
-}
-
-df <- data.frame(ConnType=names(GOdat),FirstTerm=NA,SecondTerm=NA,ThirdTerm=NA)
-for (i in 1:length(GOdat)){
-  for (j in 1:3){
-    df[i,(j+1)] = GOdat[[names(GOdat)[i]]]$Term[j]
-  }
-}
-
-write.csv(df,"~/Data/GObyConn.csv")
-df <- data.frame(ConnType=names(GOdat),Gene1=NA,Gene2=NA,Gene3=NA,
-                 Gene4=NA,Gene5=NA,Gene6=NA,Gene7=NA,Gene8=NA,Gene9=NA,Gene10=NA)
-df2 = df
-for (i in 1:length(GOdat)){
-  d = dfAll[order(dfAll[,names(GOdat[i])],decreasing=TRUE),]
-  for (j in 1:10){
-    df[i,(j+1)] = as.character(d$SwissProt[j])
-    df2[i,(j+1)] = as.character(d$UniProt[j])
-  }
-}
-
-write.csv(df,file="~/Data/SwissProtbyConn.csv")
-write.csv(df2,file="~/Data/UniProtbyConn.csv")
 
 ########
 ##conceptual figure
@@ -793,13 +1001,125 @@ grid.text(expression(underline("connection type")),x=0.15,y=0.96,just="left",gp=
 dev.off()
 
 
-library(rsvg)
-image <- rsvg("~/Downloads/smaller larva with shadow.svg")
-mult=dim(image)[1]/dim(image)[2]
+#################
+##GO term analysis using drosophila orthologs
+#################
+library(topGO)
+library(grid)
+library(gridExtra)
 
-png("~/Writing/Figures/NurseLarva/sepNurseLarv.png",width=2500,height=2500,res=300)
-grid.raster(image,x=.45,y=0.45,width=0.8/mult,height=0.8)
-dev.off()
+#Use to get Dmel mappings if we want them
+getDmel <- function(){
+  m <- inverseList(annFUN.org("BP",mapping="org.Dm.eg.db",ID="entrez"))
+  
+  x <- org.Dm.egFLYBASEPROT
+  # Get the entrez gene IDs that are mapped to a Flybase prot ID
+  mapped_genes <- mappedkeys(x)
+  # Convert to a list
+  xx <- as.list(x[mapped_genes])
+  new <- list()
+  for (i in 1:length(m)){
+    entrez = names(m)[i]
+    flyBase = xx[entrez]
+    if (is.na(names(flyBase))){
+      m[[i]]=NULL
+      next;
+    }
+    names(m)[i]=flyBase[[1]][1]
+    if (length(flyBase[[1]]) > 1){
+      for (j in 2:length(flyBase)){
+        newL = list(m[i][[1]])
+        names(newL) = flyBase[[1]][j]
+        new = c(new,newL)
+      }
+    }
+  }
+  
+  m = c(m,new)
+  return(m)
+}
+
+geneList = dfO$SIWG
+names(geneList)=dfO$gene_Dmel_FLYBASE
+
+#Not necessary for GSEA, but necessary for identifying significant genes
+select <- function(score){
+  return(score > quantile(score,0.8))
+}
+
+#Previously derived GO annotations
+go <- read.csv("~/Writing/Data/NurseSpecialization_transcriptomicData/GOannotation.csv")
+new <- list()
+for (gene in unique(go$gene)){
+  d = go[go$gene %in% gene,]
+  new[[gene]]=as.character(d$GO)
+}
+
+#Gene set enrichment analysis. Input is a named list of values
+getGSEA <- function(stat){
+  GOdata <- new("topGOdata",
+                description="Simple session",ontology="BP",
+                allGenes=stat,geneSel=select,
+                nodeSize = 10,
+                annot=annFUN.gene2GO,gene2GO=new)
+  
+  
+  resultKS <- runTest(GOdata, algorithm = "classic", statistic = "ks",scoreOrder="decreasing")
+  allRes <- GenTable(GOdata,KS=resultKS,topNodes=100)
+  return(allRes[allRes$Significant>allRes$Expected,])
+}
+
+d = list(df$L_WH,df$L_WG,df$WH_L,df$WG_L,df$SIL_WH,df$SIL_WG,df$SIWH,df$SIWG)
+res = list()
+for (i in 1:8){
+  stat = d[[i]]
+  names(stat)=df$gene
+  res[[i]]=getGSEA(stat)
+}
+
+names = c("larva-head","larva-abdomen","head-larva","abdomen-larva",
+          "larva-head","larva-abdomen","head","abdomen")
+
+tabGO <- function(res){
+  return(res$Term[res$KS < 0.05])
+}
+
+GOres <- lapply(res,tabGO)
+max = 10 #Only keep 10 GO terms
+res = sapply(GOres,'[',1:max) #keep 10 GO terms
+res <- as.data.frame(res)
+colnames(res) = names
+
+tt3 <- ttheme_minimal(
+  core=list(
+    fg_params=list(fontsize=8)),
+  colhead=list(fg_params=list(fontface="bold",fontsize=14)))
+
+#Make table grob out of results
+resT <- tableGrob(res[,5:8],theme=tt3,rows=NULL)
+grid.arrange(resT)
+g <- gtable_add_grob(resT,
+                     grobs = segmentsGrob( # line across the bottom
+                       x0 = unit(0,"npc"),
+                       y0 = unit(0,"npc"),
+                       x1 = unit(1,"npc"),
+                       y1 = unit(0,"npc"),
+                       gp = gpar(lwd = 3.0)),
+                     t = 1, b = 1, l = 1, r = 4)
+separators <- replicate(ncol(g) - 1,
+                        segmentsGrob(x1 = unit(0, "npc"), gp=gpar(lty=2)),
+                        simplify=FALSE)
+## add vertical lines on the left side of columns (after 2nd)
+g <- gtable::gtable_add_grob(g, grobs = separators,
+                             t = 2, b = nrow(g), l = seq_len(ncol(g)-1)+1)
+p <- grid.arrange(g)
+ggsave(p,file="~/Writing/Figures/NurseLarva/TableS1.png",width=10,height=4,dpi=300)
+
+
+
+
+
+
 
 ######
 ##Mock phylogeny image
@@ -833,177 +1153,33 @@ ggplot(seg) +
 
 ggsave("~/Writing/Figures/NurseLarva/dummyPhylo.png",bg="transparent")
 
-setwd("~/Writing/Data/NurseSpecialization_transcriptomicData/")
-ogg <- read.csv("ThreeWayOGGMap.csv") #Import 3-way OGG map
-df <- read.csv("Dmel_secreted.csv") #Derived from http://www.flyrnai.org/tools/glad/web/
-df = df[,c(1,2)]
-colnames(df)[2] = "Flybase"
-key <- read.table("DmelKey.txt") #Generated from Drosophila melanogaster gff file
-oggK = merge(ogg,key,by.x="gene_Dmel_FLYBASE",by.y="V1")
-oggS = merge(oggK,df,by.x="V2",by.y="Flybase") #only secreted orthologs
 
-dfAll$secreted = "no"
-dfAll$secreted[dfAll$gene %in% oggS$gene_Mphar] = 'yes'
 
-mean(dfAll$SI_Overall[dfAll$secreted=="no"])
-mean(dfAll$SI_Overall[dfAll$secreted=="yes"])
 
-d = melt(dfAll[,c(1,11:14,22)],id.vars=c("gene","secreted"))
-
-ggplot(d,aes(x=variable,y=value,fill=secreted))+
-  geom_boxplot(notch=TRUE)  
-
-wilcox.test(dfAll$SIWG[dfAll$secreted=='no'],dfAll$SIWG[dfAll$secreted=='yes'])
-
-####################
-##Trying a purely correlational approach
-####################
-setInput <- function(codes,names,fpkm){
-  AllExpr = list()
-  for (i in 1:5){
-    nSamp = getNsamp(codes,i)
-    expr = list()
-    for (j in 1:length(codes)){
-      f = factors[grepl(codes[j],factors$sample.id)&factors$stage==i,]
-      samps = sample(f$sample.id,nSamp,replace=FALSE) ##Want same number of samples per sample type
-      expr[[j]] = fpkm[,samps]
-      expr[[j]]$tissue=names[j]
-      expr[[j]]$gene = rownames(expr[[j]])
-      expr[[j]]$tissue_gene = with(expr[[j]],paste(tissue,gene,sep="_"))
-      colnames(expr[[j]]) = c(paste("Stage",i,"_",seq(1,nSamp),sep=""),"tissue","gene","tissue_gene")
-    }
-    AllExpr[[i]] = ldply(expr,data.frame)
-    rownames(AllExpr[[i]]) = AllExpr[[i]]$tissue_gene
-    AllExpr[[i]] = AllExpr[[i]][,c(1:nSamp)]
-  }
-  input <- do.call(cbind,AllExpr)
-  return(input)
+library(jsonlite)
+d <- fromJSON("~/genome_assembly/mphar/histogram_contig.json")
+f <- read.table("~/genome_assembly/scafs.txt",sep=',')
+f$Length = f$V2
+for (i in 1:nrow(f)){
+  f$cum[i]=sum(f$Length[1:i])
 }
 
-getNsamp <- function(codes,stage){
-  nSamp = c()
-  for (code in codes){
-    f = factors[grepl(code,factors$sample.id)&factors$stage==stage,]
-    nSamp=c(nSamp,nrow(f))
-  }
-  return(min(nSamp))
+n50 = min(f$Length[f$cum < 0.5*f$cum[nrow(f)]])
+n90 = min(f$length[f$cum > 0.1*sum(f$nbase)])
+l50 = sum(f$N[f$cum > 0.5*sum(f$nbase)])
+
+d <- fromJSON("~/genome_assembly/mphar/histogram_scaffold.json")
+
+f = data.frame(N = d$vals)
+f$length=seq(from=d$min,to=d$max,by=d$binsize)
+f$nbase = f$length*f$N
+for (i in 1:nrow(f)){
+  f$cum[i]=colSums(f[1:i,])[3]
 }
 
-deriveCodes <- function(samp){
-  if (samp=="worker"){
-    codes = c("W.*_L","C.*WH","C.*WG")
-    names = c("WorkLarv","WorkNurseH","WorkNurseG")
-  } else if (samp=="random"){
-    codes = c("QW.*_L","R.*WH","R.*WG")
-    names = c("WorkLarvQR","RandNurseH","RandNurseG")
-  } else if (samp=="forager"){
-    codes = c("W.*_L","F.*WH","F.*WG")
-    names = c("WorkeLarv","ForagerH","ForagerG")
-  } else if (samp=="workerQR"){
-    codes = c("QW.*_L","QCH","QCG")
-    names = c("WorkLarvQR","WorkNurseHQR","WorkNurseGQR")
-  }
-  return(list(codes,names))
-}
+n50 = min(f$length[f$cum > 0.5*sum(f$nbase)])
+n90 = min(f$length[f$cum > 0.9*sum(f$nbase)])
+l50 = sum(f$N[f$cum > 0.5*sum(f$nbase)])
 
-sortData <- function(N,fpkm,codes){
-  fpkm <- fpkm[,grepl(codes[1],colnames(fpkm))|grepl(codes[2],colnames(fpkm))|grepl(codes[3],colnames(fpkm))]
-  rowS = rowSums(fpkm)
-  keep = rowS[order(rowS,decreasing=TRUE)]
-  keep = names(keep)[1:N]
-  fpkm = fpkm[keep,]
-  fpkm = log(fpkm + sqrt(fpkm ^ 2 + 1)) #hyperbolic sine transformation to normalize gene expression data
-  
-  return(fpkm)
-}
-
-getConns <- function(Ngenes,sample){
-  load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
-  n <- deriveCodes(sample) #returns names, codes
-  fpkm <- sortData(Ngenes,fpkm,n[[1]])
-  d <- setInput(n[[1]],n[[2]],fpkm) #makes meta-sample expression dataframe (genes labeled by individual)
-  cMat <- cor(t(d)) #calculate gene-gene correlation
-  nGene = nrow(fpkm)
-  
-  res <- matrix(nrow=1,ncol=4)
-  for (i in 1:nrow(cMat)){
-    for (j in 1:3){
-      if (i/nGene > j){ #Will iterate over the three blocks (matrix is symetric)
-        next;
-      } else {
-        gene <- gsub(".*_","",rownames(cMat)[i])
-        samp1 <- gsub("_.*","",rownames(cMat)[i])
-        samp2 <- n[[2]][j] #n[[2]] holds the names list
-        cAbs = mean(abs(cMat[i,(nGene*(j-1)+1):(nGene*j)])) #Subset so calculates over one tissue
-        res = rbind(res,c(gene,samp1,samp2,cAbs))
-      }
-    }
-  }
-  
-  res = as.data.frame(res[-c(1),])
-  res$samp = as.factor(do.call(paste,c(res[,c(2,3)],list(sep="_"))))
-  res$V4 = as.numeric(as.character(res$V4))
-  res$V1 = as.character(res$V1)
-  rh = dcast(res[,c(1,4,5)],V1~samp,value.var="V4")
-  colnames(rh)[1] = "gene"
-  return(rh)
-}
-
-rand = getConns(1000,"random")
-work = getConns(1000,"workerQR")
-rand$SIWH=rand$WorkLarvQR_RandNurseH-rand$RandNurseH_RandNurseH
-rand$SIWG=rand$WorkLarvQR_RandNurseG-rand$RandNurseG_RandNurseG
-rand$SIL=(rand$WorkLarvQR_RandNurseH+rand$WorkLarvQR_RandNurseG)/2-rand$WorkLarvQR_WorkLarvQR
-work$SIWH=work$WorkLarvQR_WorkNurseHQR-work$WorkNurseHQR_WorkNurseHQR
-work$SIWG=work$WorkLarvQR_WorkNurseGQR-work$WorkNurseGQR_WorkNurseGQR
-work$SIL=(work$WorkLarvQR_WorkNurseHQR+work$WorkLarvQR_WorkNurseGQR)/2-work$WorkLarvQR_WorkLarvQR
-wilcox.test(rand$SIL,work$SIL,paired=TRUE,alternative="less")
-wilcox.test(rand$SIWH,work$SIWH,paired=TRUE,alternative="less")
-wilcox.test(rand$SIWG,work$SIWG,paired=TRUE,alternative="less")
-wilcox.test(rand$WorkLarvQR_WorkLarvQR,work$WorkLarvQR_WorkLarvQR,paired=TRUE,alternative="less")
-
-
-rh$SIWH = -rh$RandNurseH_RandNurseH + rh$WorkLarvQR_RandNurseH
-rh$SIWG = -rh$RandNurseG_RandNurseG + rh$WorkLarvQR_RandNurseG
-rh$SIL = (rh$WorkLarvQR_RandNurseG+rh$WorkLarvQR_RandNurseH)/2 - rh$WorkLarvQR_WorkLarvQR
-f.est <- read.csv("~/Data/MKtestConstraintOneAlpha.csv")
-colnames(f.est) = c("gene","f.est")
-dfAll <- merge(f.est,work,by="gene")
-dfAll$SI_Overall = (dfAll$SIWH+dfAll$SIWG+dfAll$SIL)/3
-
-
-
-
-ext <- read.csv("~/Downloads/msx123_Supp (1)/MpharAnn.csv")
-dfAll = merge(ext,rh,by.x="Gene",by.y="gene")
-
-dfAll$PS2 = factor(dfAll$PS2, levels = c("cellular","eukaryote","bilaterian","insect","hymenopteran_ant"))
-dfAll = dfAll[!is.na(dfAll$PS2),]
-levels(dfAll$PS2)[5]="hymenopteran"
-
-ggplot(dfAll,aes(x=PS2,y=SI_Overall))+geom_boxplot(notch=TRUE)
-
-
-lm <- glm(SIWH ~ PS2, data=dfAll)
-lm <- glm(SI_Overall ~ PS2, data=dfAll)
-summary(glht(lm, mcp(PS2="Tukey"))) 
-
-dr = melt(rand[,c(1:7)],id.vars=c("gene"))
-p1<- ggplot(dr,aes(x=variable,y=value))+
-  geom_boxplot()
-
-dr = melt(work[,c(1:7)],id.vars=c("gene"))
-p2<- ggplot(dr,aes(x=variable,y=value))+
-  geom_boxplot()
-
-grid.arrange(p1,p2)
-
-
-
-
-
-
-
-
-
-
+load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
+write.csv(fpkm,file="~/Data/Nurse_Larva/fpkm.csv")

@@ -3,7 +3,6 @@ library(edgeR)
 library(reshape2)
 library(rslurm)
 
-
 #Load counts, factors
 load("cleandata.RData")
 
@@ -130,25 +129,7 @@ data <- formatExpr("W_L","RG","QCG")
 genes <- DEgene[[6]]
 corRG <- testCor()
 
-save(corQCH,corQCG,corCH,corCG,DEgene,file='CorResults.RData')
-
-
-#From this, we get a list of social links
-#For each nurse gene, then, we have table of the types of links. This is, in some way, a measure of sociality
-#Can ask is prob(social) > prob(random) to identify social genes in nurses and larvae separately
-
-
-#Once we have this list of social genes, there are a couple of potentially interesting things to ask/develop
-#First, perform some sort of clustering to generate modules in larval networks (possibly using the new clust software)
-#Next, do larval "social" genes cluster? i.e. is there presence/absence in modules non-random
-#Are larval "social genes" hub genes?
-#Are nurse "social genes" hub genes? In comparison to control genes? To non-social varying genes?
-
-#It would also be cool to use newman's spectral method to identify modules using the link information we have, 
-#But really, it may be best to reconstruct some idea of nurse and larvae networks, and then draw in these social connections
-#What kind of larval genes do social connections target? What kind of nurse genes to social connections target?
-#Is there any interaction? For example, is there an association between the age of nurse genes and there corresponding social connection?
-
+save(corQCH,corQCG,corCH,corCG,corRH,corRG,DEgene,file='CorResults.RData')
 
 
 

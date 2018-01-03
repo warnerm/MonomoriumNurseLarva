@@ -49,6 +49,16 @@ EdgeR <- function(data,design,coef){
 	return(out)
 }
 
+load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
+f = droplevels(factors[grepl("RH",rownames(factors)),])
+design <- model.matrix(~stage+colony,data=f)
+dH <- EdgeR(counts[,colnames(counts) %in% rownames(f)],design,2:5)
+
+f = droplevels(factors[grepl("RG",rownames(factors)),])
+design <- model.matrix(~stage+colony,data=f)
+dG <- EdgeR(counts[,colnames(counts) %in% rownames(f)],design,2:5)
+
+
 ##Calculate number of DEs by queen presence at each stage
 QPStageDE <- function(code){
 	load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")

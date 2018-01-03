@@ -56,16 +56,14 @@ runSlurm <- function(N){
   return(res)
 }
 
-boots = 5
 nTry = 100
 v = seq(1,boots,by=1)
 perm = permutations(n=boots,r=boots,v=v,repeats.allowed = FALSE)
-Ns <- c(10,30,50,100,250,500,750,1000)
-Ns <- c(10,30,50)
-
+Ns <- c(100,500,1000,2500,5000)
+boots = 10
 
 corVecH = list()
-load("GenieWorkQRHs.RData")
+load("GenieWorkQRH.RData")
 d = workQRH
 for (N in Ns){
   dN = d[[N]]
@@ -74,7 +72,7 @@ for (N in Ns){
 save(corVecH,file="CorVecH.RData")
 
 corVecG = list()
-load("GenieWorkQRGs.RData")
+load("GenieWorkQRG.RData")
 d = workQRG
 for (N in Ns){
   dN = d[[N]]

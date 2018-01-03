@@ -151,10 +151,11 @@ profiles <- SetProfiles(5) ##Initialize the same profiles for all samples with 5
 timepoints = 5
 stages = seq(6-timepoints,5,1)
 stagePerm = ldply(permn(stages)) ##All possible permutations of stages
-codes = c("W.*_L","QW","CH","CG","QCH","QCG","R.*_WH","R.*_WG")
+codes = c("W.*_L","QW","CH","CG","QCH","QCG","R.*_WH","R.*_WG","LCH","LCG","LW")
 names = c("WLarv","WlarvQR","NurseH","NurseG",
-          "NurseHQR","NurseGQR","RNurseH","RNurseG")
+          "NurseHQR","NurseGQR","RNurseH","RNurseG","NurseHQL","NurseGQL","WLarvQL")
 names(names) = codes
+codes = c("LW")
 for (code in codes){
   StageExpr <- CountsbyStage(code)
   Alg(names[code])

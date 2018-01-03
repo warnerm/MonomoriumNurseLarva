@@ -67,15 +67,14 @@ allBoots <- function(boots){
 
 codes = c("QW","QCH")
 names = c("WorkLarvQR","NurseH")
-#Ns <- c(10,30,50,100,250,500,750,1000)
-Ns <- c(10,30,50)
-boots = 5
+Ns <- c(100,500,1000,2500,5000)
+boots = 10
 workQRH = list()
 for (N in Ns){
   f = selectGene(N,codes,names)
   workQRH[[N]] = allBoots(boots)
 }
-save(workQRH,file="GenieWorkQRHs.RData")
+save(workQRH,file="GenieWorkQRH.RData")
 
 codes = c("QW","QCG")
 names = c("WorkLarvQR","NurseG")
@@ -84,4 +83,4 @@ for (N in Ns){
   f = selectGene(N,codes,names)
   workQRG[[N]] = allBoots(boots)
 }
-save(workQRG,file="GenieWorkQRGs.RData")
+save(workQRG,file="GenieWorkQRG.RData")
