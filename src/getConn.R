@@ -32,9 +32,6 @@ alignStage <- function(d){
 WGCNAconn <- function(codes){
   d <- formatExpr(codes)
   
-  #For testing
-  d[[1]] = d[[1]][1:100,]
-  d[[2]] = d[[2]][1:100,]
   nGene = nrow(d[[1]])
   dM <- rbind(d[[1]],d[[2]])
   corMat <- cor(t(dM))
