@@ -59,7 +59,10 @@ getSocConns <- function(geneL){
 #Return list of expression matrices for correlation analysis
 formatExpr <- function(larv,foc,rand){
   d = lapply(c(larv,foc,rand),subExpr) #get expression matrix for each of three sample types
-  colnames(d[[3]])=gsub("R","Q",colnames(d[[3]])) #Needed to align random nurses to QR larvae
+  for (i in 2:3){
+    #Needed to align random nurses to QR larvae
+    colnames(d[[i]]) = gsub("R","Q",colnames(d[[i]]))
+  }
   dF = alignStage(list(d[[1]],d[[2]]))
   dR = alignStage(list(d[[1]],d[[3]]))
   return(list(dF,dR)) #Returns data for foc/larv comparison and rand/larv comparison
@@ -122,10 +125,10 @@ corCG <- testCor()
 
 #By treating focal nurses as 'random' and random as focal (by switching their order),
 #we can make another test that focal nurses indeed exhibit more correlations
-data <- formatExpr("W_L","RH","QCH")
+data <- formatExpr("QW","RH","QCH")
 genes <- DEgene[[5]]
 corRH <- testCor()
-data <- formatExpr("W_L","RG","QCG")
+data <- formatExpr("QW","RG","QCG")
 genes <- DEgene[[6]]
 corRG <- testCor()
 
