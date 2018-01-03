@@ -101,9 +101,9 @@ if __name__ == '__main__':
     mods = pd.read_table("~/Nurse_Larva/findK_cluster.txt")
     mods = mods.iloc[10, :]  # Based on SIL, K = 12, which is the 11th row, is the optimal number of medoids
     meds = pd.unique(mods)  # Get list of medoids
-    #run('CH',100)
-    #run('CG',100)
-    run('RH',1)
-    run('RG',100)
-    run('QCH',100)
-    run('QCG',100)
+    run('CH',1000)
+    run('CG',1000)
+    run('RH',1000)
+    run('RG',1000)
+    run('QCH',1000)
+    run('QCG',1000)
