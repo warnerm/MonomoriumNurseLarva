@@ -27,9 +27,22 @@ alignStage <- function(d){
   return(d)
 }
 
+getModList <- function(codes){
+  df <- read.table(paste("~/Nurse_Larva/sortMods",codes[1],".txt",sep=""),head=TRUE)
+  mods <- t(df[,1])
+  return(mods)
+}
+
+#Take correlation matrix and calculate connectivity
+getConn <- function(cor,mods){
+  if (is.null(mods)) mods = rep(1,nrow(cor)) #Define everything as in same module
+  res = lappy(seq(1,nrow(cor)), function(i) sum(cor[i,mods==mods[i]]))
+  return(res)
+}
+
 #Function computes WGCNA-like connectivity, signed (power = 6) and unsigned (power = 12)
 #Computes connectivity between a pair of expression matrices
-WGCNAconn <- function(codes){
+WGCNAconn <- function(codes,unsignedPWR,signedPWR){
   d <- formatExpr(codes)
   
   nGene = nrow(d[[1]])
@@ -41,9 +54,20 @@ WGCNAconn <- function(codes){
   
   #Necessary because R adds '1' to duplicate rownames
   colnames(corMat) = rownames(d[[2]])
-  corUnsigned = corMat^4
-  #corSigned = corMat^11
-  return(corUnsigned)
+  corUnsigned = abs(corMat^unsignedPWR)
+  corSigned = corMat^signedPWR
+  
+  #Get module definitions for nurse genes
+  mods <- getModList(codes)
+  
+  #Compute within module and total network connectivity
+  wMu <- getConn(corUnsigned,mods)
+  wMs <- getConn(corSigned,mods)
+  tMu <- getConn(corUnsigned,mods=NULL)
+  tMs <- getConn(corSigned,mods=NULL)
+  kDat <- data.frame(withinMod_unsigned = wMu, withinMod_signed = wMs,
+                     total_unsigned = tMu, total_signed = tMs)
+  return(kDat)
 }
 
 connCode <- list(
@@ -61,5 +85,5 @@ connCode <- list(
   c('QCG','QCG')
 )
 
-conns <- lapply(connCode,WGCNAconn)
+conns <- lapply(connCode,WGCNAconn,unsignedPWR=6,signedPWR=11)
 save(conns,file = "connMeas.RData")
