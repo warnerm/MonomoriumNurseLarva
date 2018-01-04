@@ -14,6 +14,8 @@ import multiprocessing as mp
 import re
 import sys
 import os
+from multiprocessing import Pool
+from multiprocessing.dummy import Pool as ThreadPool
 
 #necessary for slurm
 sys.path.append(os.getcwd())
@@ -42,44 +44,43 @@ def getMat(nurse):
     return dataL, dataH
 
 #Derive distance matrix, input distance matrix to callMod to derive module definitions
-def sortNurse(nurse,dataL,nurseD,scramble=True):
+def sortNurse(scramble=True):
     if (scramble):
-        nurseD = nurseD.sample(n = nurseD.shape[1], axis = 1) #Scramble nurse stage labels
-    pearson = [[np.corrcoef(dataL.iloc[i],nurseD.iloc[j])[1][0] for i in range(dataL.shape[0])] for j in range(nurseD.shape[0])]
+        nD = nurseD.sample(n = nurseD.shape[1], axis = 1) #Scramble nurse stage labels
+    else:
+        nD = nurseD
+    pearson = [[np.corrcoef(dataL.iloc[i],nD.iloc[j])[1][0] for i in range(dataL.shape[0])] for j in range(nD.shape[0])]
     dnew = pd.DataFrame.from_records(pearson)
     dist = 1 - abs(dnew)
     modL = [np.argmin(dist.iloc[row, ]) for row in range(dist.shape[0])]
     modL = meds[modL]
-    writeRes(modL, nurse, nurseD)
+    writeRes(modL)
     return modL
 
 #Initalize data files with headers
-def initialize(nurse,Dnurse):
+def initialize():
     f = open('sortMods'+nurse+'.txt', 'w')
-    for n in range(np.shape(Dnurse)[0]):
+    for n in range(np.shape(nurseD)[0]):
         f.write('gene'+str(n))
-        if n < (np.shape(Dnurse)[0] - 1):
+        if n < (np.shape(nurseD)[0] - 1):
             f.write('\t')
     f.write('\n')
     f.close()
 
 #Write a line of results
-def writeRes(res,nurse,Dnurse):
+def writeRes(res):
     f = open('sortMods'+nurse+'.txt', 'a')
-    for n in range(np.shape(Dnurse)[0]):
+    for n in range(np.shape(nurseD)[0]):
         f.write(str(res[n]))
-        if n < (np.shape(Dnurse)[0] - 1):
+        if n < (np.shape(nurseD)[0] - 1):
             f.write('\t')
     f.write('\n')
     f.close()
 
-def run(nurse,boots):
-    dataL, Dnurse = getMat(nurse)
-    initialize(nurse, Dnurse)  # write header for files
-    sortNurse(nurse,dataL, Dnurse, scramble=False)
-
+def run(boots):
+    pool = ThreadPool()
     # Note: the backend="threading" is necessary so that the local variables defined in sortNurse aren't shared
-    Parallel(n_jobs=boots,backend="threading")(delayed(sortNurse)(nurse,dataL, Dnurse) for i in range(boots))
+    pool.map(sortNurse,range(boots))
 
 if __name__ == '__main__':
     # Read in fpkm data
@@ -91,9 +92,13 @@ if __name__ == '__main__':
     mods = pd.read_table("~/Nurse_Larva/findK_cluster.txt")
     mods = mods.iloc[10, :]  # Based on SIL, K = 12, which is the 11th row, is the optimal number of medoids
     meds = pd.unique(mods)  # Get list of medoids
-    run('CH',1000)
-    run('CG',1000)
-    run('RH',1000)
-    run('RG',1000)
-    run('QCH',1000)
-    run('QCG',1000)
+    nurse = 'CH'
+    dataL, nurseD = getMat(nurse)
+    initialize()  # write header for files
+    sortNurse(scramble=False)
+    run(1000)
+    # run('CG',1000)
+    # run('RH',1000)
+    # run('RG',1000)
+    # run('QCH',1000)
+    # run('QCG',1000)
