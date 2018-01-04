@@ -1,3 +1,10 @@
+#!/usr/bin/python
+
+#SBATCH -p compute # partition (queue)
+#SBATCH --export=ALL
+#SBATCH -t 10-00:00
+#SBATCH -n 40
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
