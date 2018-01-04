@@ -30,7 +30,7 @@ socGene <- function(m2){
   m2$control = m2$posControl + m2$negControl
   df = data.frame(i = seq(1,nrow(m2),by=1))
   sjob <- slurm_apply(socBinom, df, jobname = 'geneType',
-                      nodes = 4, cpus_per_node = 20, add_objects=c("data","genes","getCorCI","conType","compareCor"),submit = TRUE)
+                      nodes = 4, cpus_per_node = 20, add_objects=c("m2"),submit = TRUE)
   res <- get_slurm_out(sjob,outtype='raw') #get output as lists
   res = ldply(res,rbind) #Each job is a row (i.e. connections with nurse genes for each larval gene)
   colnames(res) = c('p.value','geneType')
