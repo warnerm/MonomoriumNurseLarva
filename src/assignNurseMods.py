@@ -78,6 +78,9 @@ def writeRes(res):
     f.close()
 
 def run(boots):
+    dataL, nurseD = getMat(nurse)
+    initialize()  # write header for files
+    sortNurse(scramble=False)
     pool = ThreadPool()
     # Note: the backend="threading" is necessary so that the local variables defined in sortNurse aren't shared
     pool.map(sortNurse,range(boots))
@@ -94,11 +97,19 @@ if __name__ == '__main__':
     meds = pd.unique(mods)  # Get list of medoids
     nurse = 'CH'
     dataL, nurseD = getMat(nurse)
-    initialize()  # write header for files
-    sortNurse(scramble=False)
-    run(1000)
-    # run('CG',1000)
-    # run('RH',1000)
-    # run('RG',1000)
-    # run('QCH',1000)
-    # run('QCG',1000)
+    run(100)
+    nurse = 'CG'
+    dataL, nurseD = getMat(nurse)
+    run(100)
+    nurse = 'RH'
+    dataL, nurseD = getMat(nurse)
+    run(100)
+    nurse = 'RG'
+    dataL, nurseD = getMat(nurse)
+    run(100)
+    nurse = 'QCH'
+    dataL, nurseD = getMat(nurse)
+    run(100)
+    nurse = 'QCG'
+    dataL, nurseD = getMat(nurse)
+    run(100)
