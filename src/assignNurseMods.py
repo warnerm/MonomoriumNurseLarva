@@ -1,3 +1,10 @@
+#!/usr/bin/python
+
+#SBATCH -p compute # partition (queue)
+#SBATCH --export=ALL
+#SBATCH -t 10-00:00
+#SBATCH -n 40
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -5,7 +12,11 @@ import matplotlib.cm as cm
 from joblib import Parallel, delayed
 import multiprocessing as mp
 import re
+import sys
+import os
 
+#necessary for slurm
+sys.path.append(os.getcwd())
 
 #Normalize fpkm using hyperbolic sine transformation
 def hypsine ( d ):
@@ -20,7 +31,6 @@ def getMat(nurse):
         dataH.columns = [x[:3] + 'Q' for x in dataH.columns]
     else:
         dataH.columns = [x[:4] for x in dataH.columns]
-    print dataH
     dataL.columns = [x[:4] for x in dataL.columns]
     dataL = dataL.iloc[meds, :] #Restrict to medoids
     l1 = np.array(dataL.columns)
@@ -32,7 +42,7 @@ def getMat(nurse):
     return dataL, dataH
 
 #Derive distance matrix, input distance matrix to callMod to derive module definitions
-def sortNurse(dataL,nurseD,scramble=True):
+def sortNurse(nurse,dataL,nurseD,scramble=True):
     if (scramble):
         nurseD = nurseD.sample(n = nurseD.shape[1], axis = 1) #Scramble nurse stage labels
     pearson = [[np.corrcoef(dataL.iloc[i],nurseD.iloc[j])[1][0] for i in range(dataL.shape[0])] for j in range(nurseD.shape[0])]
@@ -40,6 +50,7 @@ def sortNurse(dataL,nurseD,scramble=True):
     dist = 1 - abs(dnew)
     modL = [np.argmin(dist.iloc[row, ]) for row in range(dist.shape[0])]
     modL = meds[modL]
+    writeRes(modL, nurse, nurseD)
     return modL
 
 #Initalize data files with headers
@@ -65,13 +76,10 @@ def writeRes(res,nurse,Dnurse):
 def run(nurse,boots):
     dataL, Dnurse = getMat(nurse)
     initialize(nurse, Dnurse)  # write header for files
-    res = sortNurse(dataL, Dnurse, scramble=False)
-    writeRes(res, nurse, Dnurse)
-    num_cores = mp.cpu_count()
+    sortNurse(nurse,dataL, Dnurse, scramble=False)
 
     # Note: the backend="threading" is necessary so that the local variables defined in sortNurse aren't shared
-    results = Parallel(n_jobs=num_cores, backend="threading")(delayed(sortNurse)(dataL, Dnurse) for i in range(boots))
-    [writeRes(results[i], nurse, Dnurse) for i in range(len(results))]
+    Parallel(n_jobs=boots,backend="threading")(delayed(sortNurse)(nurse,dataL, Dnurse) for i in range(boots))
 
 if __name__ == '__main__':
     # Read in fpkm data
