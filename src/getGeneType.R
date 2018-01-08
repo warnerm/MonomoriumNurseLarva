@@ -10,6 +10,7 @@ tabType <- function(df){
   d <<- as.data.frame(t(df)) #Global variable for slurm
   results <- list()
   for (i in 1:nrow(d)){
+    print(i)
     social = sum(grepl("Social",t(d[i,])))
     control = sum(grepl("Control",t(d[i,])))
     if (social + control > 0) pvalue = binom.test(social,social+control,p = 0.5)$p.value
