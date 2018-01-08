@@ -2,8 +2,8 @@
 
 #SBATCH -p compute # partition (queue)
 #SBATCH --export=ALL
-#SBATCH -t 10-00:00
-#SBATCH -n 40
+#SBATCH -t 20-00:00
+#SBATCH -n 20
 
 import numpy as np
 import pandas as pd
@@ -94,25 +94,25 @@ if __name__ == '__main__':
     data = data.apply(hypsine) #hyperbolic sine, similar to log transform
 
     # Load larval module definitions
-    mods = pd.read_table("~/Data/Nurse_Larva/findK_clusterW_L.txt")
+    mods = pd.read_table("~/Nurse_Larva/findK_clusterW_L.txt")
     mods = mods.iloc[10, :]  # Based on SIL, K = 12, which is the 11th row, is the optimal number of medoids
     meds = pd.unique(mods)  # Get list of medoids
     meds = np.append(meds,-1) #Add a section for genes that turn up NA
     nurse = 'CH'
     dataL, nurseD = getMat(nurse)
-    run(2)
+    run(1000)
     nurse = 'CG'
     dataL, nurseD = getMat(nurse)
-    run(2)
+    run(1000)
     nurse = 'RH'
     dataL, nurseD = getMat(nurse)
-    run(2)
+    run(1000)
     nurse = 'RG'
     dataL, nurseD = getMat(nurse)
-    run(2)
+    run(1000)
     nurse = 'QCH'
     dataL, nurseD = getMat(nurse)
-    run(2)
+    run(1000)
     nurse = 'QCG'
     dataL, nurseD = getMat(nurse)
-    run(2)
+    run(1000)
