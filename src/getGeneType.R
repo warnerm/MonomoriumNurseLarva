@@ -3,7 +3,7 @@ library(reshape2)
 library(plyr)
 #library(rslurm)
 
-setwd("~/Data/Nurse_Larva")
+setwd("~/Nurse_Larva")
 load("CorResults.RData") #After running 'corApproach.R' on cluster
 #Tabulate type (posSocial, negSocial, etc of social interactions)
 tabType <- function(df){
