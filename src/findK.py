@@ -95,21 +95,7 @@ def performCluster(b,kval):
     clusters, medioids, sil = clusterSil(kval)
     return np.mean(sil), clusters
 
-pltN = 0
-maxK = 40
-minK = 2
-boots = 100
-nTest = maxK - minK + 1
-
 def run(code):
-    data = pd.read_csv("~/Nurse_Larva/fpkm.csv", index_col=0)
-    data = data.filter(regex=code, axis=1)  # Keep only worker larvae samples
-    data = data.apply(hypsine)  # hyperbolic sine, similar to log transform
-    pearson = data.transpose().corr(method='pearson')
-    dist = 1 - abs(pearson)
-
-    num_cores = multiprocessing.cpu_count()
-
     f = open('findK_sil'+code+'.txt', 'w')
     f.write("K\tMeanSil\n")
     f.close()
@@ -144,4 +130,14 @@ def run(code):
         f.write(str(kval) + '\t' + str(sil[optimal]) + '\n')
         f.close()
 
+data = pd.read_csv("~/Nurse_Larva/fpkm.csv", index_col=0)
+data = data.filter(regex='W_L', axis=1)  # Keep only worker larvae samples
+data = data.apply(hypsine)  # hyperbolic sine, similar to log transform
+pearson = data.transpose().corr(method='pearson')
+dist = 1 - abs(pearson)
+maxK = 40
+minK = 2
+boots = 100
+nTest = maxK - minK + 1
+num_cores = multiprocessing.cpu_count()
 run('W_L')
