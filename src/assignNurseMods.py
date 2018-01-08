@@ -45,7 +45,7 @@ def getMat(nurse):
     return dataL, dataH
 
 #Derive distance matrix, input distance matrix to callMod to derive module definitions
-def sortNurse(scramble=True):
+def sortNurse(b,scramble=True):
     if (scramble):
         nD = nurseD.sample(n = nurseD.shape[1], axis = 1) #Scramble nurse stage labels
     else:
@@ -82,10 +82,11 @@ def writeRes(res):
 def run(boots):
     dataL, nurseD = getMat(nurse)
     initialize()  # write header for files
-    sortNurse(scramble=False)
+    sortNurse(0,scramble=False)
     pool = ThreadPool()
+    num_cores = mp.cpu_count()
     # Note: the backend="threading" is necessary so that the local variables defined in sortNurse aren't shared
-    pool.map(sortNurse,range(boots))
+    Parallel(n_jobs=num_cores,backend="threading")(delayed(sortNurse)(b) for b in range(boots))
 
 if __name__ == '__main__':
     # Read in fpkm data
@@ -94,25 +95,25 @@ if __name__ == '__main__':
     data = data.apply(hypsine) #hyperbolic sine, similar to log transform
 
     # Load larval module definitions
-    mods = pd.read_table("~/Nurse_Larva/findK_clusterW_L.txt")
+    mods = pd.read_table("~/Data/Nurse_Larva/findK_clusterW_L.txt")
     mods = mods.iloc[10, :]  # Based on SIL, K = 12, which is the 11th row, is the optimal number of medoids
     meds = pd.unique(mods)  # Get list of medoids
     meds = np.append(meds,-1) #Add a section for genes that turn up NA
     nurse = 'CH'
     dataL, nurseD = getMat(nurse)
-    run(1000)
+    run(2)
     nurse = 'CG'
     dataL, nurseD = getMat(nurse)
-    run(1000)
+    run(2)
     nurse = 'RH'
     dataL, nurseD = getMat(nurse)
-    run(1000)
+    run(2)
     nurse = 'RG'
     dataL, nurseD = getMat(nurse)
-    run(1000)
+    run(2)
     nurse = 'QCH'
     dataL, nurseD = getMat(nurse)
-    run(1000)
+    run(2)
     nurse = 'QCG'
     dataL, nurseD = getMat(nurse)
-    run(1000)
+    run(2)
