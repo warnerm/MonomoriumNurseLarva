@@ -1,5 +1,6 @@
 library(plyr)
-load("cleandata.RData")
+setwd("~/Data/Nurse_Larva")
+load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
 #Return list of expression matrices for correlation analysis
 formatExpr <- function(codes){
   d = lapply(codes,subExpr) #get expression matrix for each of three sample types
@@ -28,15 +29,16 @@ alignStage <- function(d){
 }
 
 getModList <- function(codes){
-  df <- read.table(paste("~/Nurse_Larva/sortMods",codes[1],".txt",sep=""),head=TRUE)
-  mods <- t(df[,1])
+  df <- read.table(paste("sortMods",codes[1],".txt",sep=""),head=TRUE)
+  mods <- t(df[1,])
   return(mods)
 }
 
 #Take correlation matrix and calculate connectivity
 getConn <- function(cor,mods){
   if (is.null(mods)) mods = rep(1,nrow(cor)) #Define everything as in same module
-  res = lappy(seq(1,nrow(cor)), function(i) sum(cor[i,mods==mods[i]]))
+  res = lapply(seq(1,nrow(cor)), function(i) sum(cor[i,mods==mods[i]]))
+  res = unlist(res)
   return(res)
 }
 
@@ -71,19 +73,25 @@ WGCNAconn <- function(codes,unsignedPWR,signedPWR){
 }
 
 connCode <- list(
-  c('CH','W_L'),
-  c('CG','W_L'),
-  c('RH','W_L'),
-  c('RG','W_L'),
-  c('QCH','W_L'),
-  c('QCG','W_L'),
-  c('CH','CH'),
-  c('CG','CG'),
-  c('RH','RH'),
-  c('RG','RG'),
-  c('QCH','QCH'),
-  c('QCG','QCG')
+  c('CH','W_L')
+  # c('CG','W_L'),
+  # c('RH','W_L'),
+  # c('RG','W_L'),
+  # c('QCH','W_L'),
+  # c('QCG','W_L'),
+  # c('CH','CH'),
+  # c('CG','CG'),
+  # c('RH','RH'),
+  # c('RG','RG'),
+  # c('QCH','QCH'),
+  # c('QCG','QCG')
 )
 
 conns <- lapply(connCode,WGCNAconn,unsignedPWR=6,signedPWR=11)
 save(conns,file = "connMeas.RData")
+
+setwd("~/GitHub/MonomoriumNurseLarva/")
+codes = "CH"
+df <- read.table(paste("sortMods",codes[1],".txt",sep=""),head=TRUE)
+
+
