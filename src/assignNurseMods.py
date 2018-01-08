@@ -92,7 +92,7 @@ if __name__ == '__main__':
     data = data.apply(hypsine) #hyperbolic sine, similar to log transform
 
     # Load larval module definitions
-    mods = pd.read_table("~/Nurse_Larva/findK_cluster.txt")
+    mods = pd.read_table("~/Nurse_Larva/findK_clusterW_L.txt")
     mods = mods.iloc[10, :]  # Based on SIL, K = 12, which is the 11th row, is the optimal number of medoids
     meds = pd.unique(mods)  # Get list of medoids
     nurse = 'CH'
