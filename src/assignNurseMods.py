@@ -54,8 +54,10 @@ def sortNurse(b,scramble=True):
     dnew = pd.DataFrame.from_records(pearson)
     dist = 1 - abs(dnew)
     modL = [np.argmin(dist.iloc[row, ]) for row in range(dist.shape[0])]
-    modL = [len(meds) - 1 if math.isnan(x) else x for x in modL] #Replace NAs with the last index, which corresponds to mediod -1 (not found)
-    modL = meds[modL]
+
+    # Replace NAs with -1
+    modL = [meds[x] if not math.isnan(x) else -1 for x in modL]
+
     writeRes(modL)
     return modL
 
@@ -98,7 +100,6 @@ if __name__ == '__main__':
     mods = pd.read_table("~/Data/Nurse_Larva/findK_clusterW_L.txt")
     mods = mods.iloc[10, :]  # Based on SIL, K = 12, which is the 11th row, is the optimal number of medoids
     meds = pd.unique(mods)  # Get list of medoids
-    meds = np.append(meds,-1) #Add a section for genes that turn up NA
     nurse = 'CH'
     dataL, nurseD = getMat(nurse)
     run(2)
