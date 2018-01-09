@@ -1,6 +1,9 @@
 library(plyr)
-setwd("~/Data/Nurse_Larva")
-load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
+library(rslurm)
+
+setwd("~/Nurse_Larva")
+load("cleandata.RData")
+
 #Return list of expression matrices for correlation analysis
 formatExpr <- function(codes){
   d = lapply(codes,subExpr) #get expression matrix for each of three sample types
@@ -34,9 +37,24 @@ getModList <- function(codes){
   return(mods)
 }
 
+#Get strength of connection
+getStrength <- function(i){
+  return(sum(corFrame[i,mList==mList[i]])/ncol(corFrame[,mList==mList[i]]))
+}
+
 #Take correlation matrix and calculate connectivity
 getConn <- function(cor,mods){
   if (is.null(mods)) mods = rep(1,nrow(cor)) #Define everything as in same module
+  
+  #Global variables for slurm
+  mList <<- mods
+  corFrame <<- cor
+  df = data.frame(i = seq(1,nrow(cor),by=1))
+  sjob <- slurm_apply(getStrength, df, jobname = 'getConn',
+                      nodes = 4, cpus_per_node = 20, add_objects=c("mList","corFrame"),submit = TRUE)
+  res <- get_slurm_out(sjob,outtype='raw') #get output as lists
+  res <- unlist(res) #Each job is a number
+  
   res = lapply(seq(1,nrow(cor)), function(i) sum(cor[i,mods==mods[i]])/ncol(cor[,mods==mods[i]]))
   res = unlist(res)
   return(res)
@@ -69,7 +87,7 @@ WGCNAconn <- function(codes,unsignedPWR,signedPWR){
   tMs <- getConn(corSigned,mods=NULL)
   kDat <- data.frame(withinMod_unsigned = wMu, withinMod_signed = wMs,
                      total_unsigned = tMu, total_signed = tMs)
-  return(kDat)
+  write.csv(kDat,file=paste(codes[1],codes[2],"connFrame.csv",sep=""))
 }
 
 connCode <- list(
@@ -87,11 +105,6 @@ connCode <- list(
   c('QCG','QCG')
 )
 
-conns <- lapply(connCode,WGCNAconn,unsignedPWR=6,signedPWR=11)
-save(conns,file = "connMeas.RData")
-
-setwd("~/GitHub/MonomoriumNurseLarva/")
-codes = "CH"
-df <- read.table(paste("sortMods",codes[1],".txt",sep=""),head=TRUE)
+lapply(connCode,WGCNAconn,unsignedPWR=6,signedPWR=11)
 
 
