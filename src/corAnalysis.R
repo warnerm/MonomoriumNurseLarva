@@ -33,6 +33,17 @@ load("socDet.RData")
 load("corResults.RData")
 
 #Number of significant correlation with larval profiles of nurse DEGs by larval stage
+lapply(socDet,function (x) {
+  x$social = "NS"
+  if (x$Pvalue < 0.05){
+    if (x$Excess > 0){
+      x$social = "social"
+    } else {
+      x$social = "control"
+    }
+  }
+}
+)
 numbers <- lapply(socDet,function (x) c(sum(x$geneType!="social"),sum(x$geneType=="social")))
 numbers <- numbers[!grepl('LARV',names(numbers))] #Remove larval numbers
 num = ldply(numbers)
