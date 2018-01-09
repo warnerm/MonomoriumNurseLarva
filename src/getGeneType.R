@@ -12,8 +12,8 @@ getSocConns <- function(i){
   if (social + control > 0) pvalue = binom.test(social,social+control,p = 0.5)$p.value
   else pvalue = NA
   return(data.frame(Gene = rownames(d)[i],Pvalue = pvalue, Excess = social - control,
-             posSocial = sum(grepl("posSocial",d[i,])),negSocial = sum(grepl("posSocial",d[i,])),
-             posControl = sum(grepl("posControl",d[i,])),negControl = sum(grepl("posControl",d[i,]))))
+             posSocial = sum(grepl("posSocial",t(d[i,]))),negSocial = sum(grepl("negSocial",t(d[i,]))),
+             posControl = sum(grepl("posControl",t(d[i,]))),negControl = sum(grepl("negControl",t(d[i,])))))
 }
 
 #Tabulate type (posSocial, negSocial, etc of social interactions)
