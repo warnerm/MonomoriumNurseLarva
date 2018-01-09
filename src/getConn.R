@@ -37,57 +37,29 @@ getModList <- function(codes){
   return(mods)
 }
 
-#Get strength of connection
-getStrength <- function(i){
-  return(sum(corFrame[i,mList==mList[i]])/ncol(corFrame[,mList==mList[i]]))
-}
-
-#Take correlation matrix and calculate connectivity
-getConn <- function(cor,mods){
-  if (is.null(mods)) mods = rep(1,nrow(cor)) #Define everything as in same module
-  
-  #Global variables for slurm
-  mList <<- mods
-  corFrame <<- cor
-  df = data.frame(i = seq(1,nrow(cor),by=1))
-  sjob <- slurm_apply(getStrength, df, jobname = 'getConn',
-                      nodes = 4, cpus_per_node = 20, add_objects=c("mList","corFrame"),submit = TRUE)
-  res <- get_slurm_out(sjob,outtype='raw') #get output as lists
-  res <- unlist(res) #Each job is a number
-  
-  res = lapply(seq(1,nrow(cor)), function(i) sum(cor[i,mods==mods[i]])/ncol(cor[,mods==mods[i]]))
-  res = unlist(res)
-  return(res)
+#For each gene in input frame, get connectivities to other genes
+getConns <- function(i){
+  c = abs(cor(t(d[[1]][i,]),t(d[[2]])))^6
+  kTotal = sum(c)
+  kMod = sum(c[mods==mods[i]])
+  return(data.frame(Gene = rownames(d[[1]])[i],kTotal = kTotal, kMod = kMod))
 }
 
 #Function computes WGCNA-like connectivity, signed (power = 6) and unsigned (power = 12)
 #Computes connectivity between a pair of expression matrices
-WGCNAconn <- function(codes,unsignedPWR,signedPWR){
-  d <- formatExpr(codes)
-  
-  nGene = nrow(d[[1]])
-  dM <- rbind(d[[1]],d[[2]])
-  corMat <- cor(t(dM))
-  
-  #Only want off diagonal square matrix, which corresponds to between tissue correlation with rows as code1 and columns as code 2
-  corMat <- corMat[1:nGene,(nGene+1):ncol(corMat)]
-  
-  #Necessary because R adds '1' to duplicate rownames
-  colnames(corMat) = rownames(d[[2]])
-  corUnsigned = abs(corMat^unsignedPWR)
-  corSigned = corMat^signedPWR
+WGCNAconn <- function(codes){
   
   #Get module definitions for nurse genes
-  mods <- getModList(codes)
+  mods <<- getModList(codes)
+  d <<- formatExpr(codes)
   
-  #Compute within module and total network connectivity
-  wMu <- getConn(corUnsigned,mods)
-  wMs <- getConn(corSigned,mods)
-  tMu <- getConn(corUnsigned,mods=NULL)
-  tMs <- getConn(corSigned,mods=NULL)
-  kDat <- data.frame(withinMod_unsigned = wMu, withinMod_signed = wMs,
-                     total_unsigned = tMu, total_signed = tMs)
-  write.csv(kDat,file=paste(codes[1],codes[2],"connFrame.csv",sep=""))
+  df = data.frame(i = seq(1,nrow(d[[1]]),by=1))
+  sjob <- slurm_apply(getConns, df, jobname = 'getConn',
+                      nodes = 4, cpus_per_node = 20, add_objects=c("d","mods","unsignedPWR"),submit = TRUE)
+  res <- get_slurm_out(sjob,outtype='raw') #get output as lists
+  res <- ldply(res)
+  
+  write.csv(res,file=paste(codes[1],codes[2],"connFrame.csv",sep=""))
 }
 
 connCode <- list(
@@ -105,6 +77,7 @@ connCode <- list(
   c('QCG','QCG')
 )
 
-lapply(connCode,WGCNAconn,unsignedPWR=6,signedPWR=11)
+unsignedPWR = 6
+lapply(connCode,WGCNAconn)
 
 
