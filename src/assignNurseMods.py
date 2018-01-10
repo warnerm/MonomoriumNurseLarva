@@ -63,7 +63,7 @@ def sortNurse(b,scramble=True):
 
 #Initalize data files with headers
 def initialize():
-    f = open('sortMods'+nurse+'.txt', 'w')
+    f = open('New_sortMods'+nurse+'.txt', 'w')
     for n in range(np.shape(nurseD)[0]):
         f.write('gene'+str(n))
         if n < (np.shape(nurseD)[0] - 1):
@@ -73,7 +73,7 @@ def initialize():
 
 #Write a line of results
 def writeRes(res):
-    f = open('sortMods'+nurse+'.txt', 'a')
+    f = open('New_sortMods'+nurse+'.txt', 'a')
     for n in range(np.shape(nurseD)[0]):
         f.write(str(res[n]))
         if n < (np.shape(nurseD)[0] - 1):
@@ -92,29 +92,29 @@ def run(boots):
 
 if __name__ == '__main__':
     # Read in fpkm data
-    data = pd.read_csv("~/Data/Nurse_Larva/fpkm.csv", index_col=0)
+    data = pd.read_csv("~/Nurse_Larva/fpkm.csv", index_col=0)
     data = data.filter(regex='CG|CH|W_L|RH|RG', axis=1)  # Keep only relevant samples
     data = data.apply(hypsine) #hyperbolic sine, similar to log transform
 
     # Load larval module definitions
-    mods = pd.read_table("~/Data/Nurse_Larva/findK_clusterW_L.txt")
+    mods = pd.read_table("~/Nurse_Larva/findK_clusterW_L.txt")
     mods = mods.iloc[10, :]  # Based on SIL, K = 12, which is the 11th row, is the optimal number of medoids
     meds = pd.unique(mods)  # Get list of medoids
     nurse = 'CH'
     dataL, nurseD = getMat(nurse)
-    run(2)
+    run(1000)
     nurse = 'CG'
     dataL, nurseD = getMat(nurse)
-    run(2)
+    run(1000)
     nurse = 'RH'
     dataL, nurseD = getMat(nurse)
-    run(2)
+    run(10000)
     nurse = 'RG'
     dataL, nurseD = getMat(nurse)
-    run(2)
+    run(1000)
     nurse = 'QCH'
     dataL, nurseD = getMat(nurse)
-    run(2)
+    run(1000)
     nurse = 'QCG'
     dataL, nurseD = getMat(nurse)
-    run(2)
+    run(1000)
