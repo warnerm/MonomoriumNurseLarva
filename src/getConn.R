@@ -32,16 +32,22 @@ alignStage <- function(d){
 }
 
 getModList <- function(codes){
-  df <- read.table(paste("sortMods",codes[1],".txt",sep=""),head=TRUE)
-  mods <- t(df[1,])
+  if (codes[1] == "W_L"){
+    df <- read.table("findK_clusterW_L.txt",head=TRUE)
+    mods <- t(df[11,])
+  } else {
+    df <- read.table(paste("sortMods",codes[1],".txt",sep=""),head=TRUE)
+    mods <- t(df[1,])
+  }
   return(mods)
 }
 
 #For each gene in input frame, get connectivities to other genes
 getConns <- function(i){
-  c = abs(cor(t(d[[1]][i,]),t(d[[2]])))^6
-  kTotal = sum(c)
-  kMod = sum(c[mods==mods[i]])
+  c = abs(cor(t(d[[1]][i,]),t(d[[2]])))^unsignedPWR
+  c[is.na(c)]=0
+  kTotal = sum(c)/length(c)
+  kMod = sum(c[mods==mods[i]])/sum(mods==mods[i])
   return(data.frame(Gene = rownames(d[[1]])[i],kTotal = kTotal, kMod = kMod))
 }
 
@@ -74,7 +80,14 @@ connCode <- list(
   c('RH','RH'),
   c('RG','RG'),
   c('QCH','QCH'),
-  c('QCG','QCG')
+  c('QCG','QCG'), 
+  c('W_L','CH'),
+  c('W_L','CG'),
+  c('W_L','RH'),
+  c('W_L','RG'),
+  c('W_L','QCH'),
+  c('W_L','QCG'),
+  c('W_L','W_L')
 )
 
 unsignedPWR = 6
