@@ -33,17 +33,20 @@ load("socDet.RData")
 load("corResults.RData")
 
 #Number of significant correlation with larval profiles of nurse DEGs by larval stage
-lapply(socDet,function (x) {
-  x$social = "NS"
-  if (x$Pvalue < 0.05){
-    if (x$Excess > 0){
-      x$social = "social"
-    } else {
-      x$social = "control"
+for (i in 1:length(socDet)){
+  socDet[[i]]$geneType = apply(socDet[[i]][,c('Pvalue','Excess')],1,function (x) {
+    if (!is.na(x['Pvalue'])){
+      if (x['Pvalue'] < 0.00001){
+        if (x['Excess'] > 0){
+          return("social")
+        } else {
+          return("control")
+        }
+      } 
     }
-  }
+    return("NS")
+  })
 }
-)
 numbers <- lapply(socDet,function (x) c(sum(x$geneType!="social"),sum(x$geneType=="social")))
 numbers <- numbers[!grepl('LARV',names(numbers))] #Remove larval numbers
 num = ldply(numbers)
@@ -78,7 +81,7 @@ dev.off()
 
 
 #Load larval module definitions
-df <- read.table("findK_cluster.txt",header=TRUE)
+df <- read.table("findK_clusterW_L.txt",header=TRUE)
 mods = t(df[11,]) #12 modules results in a high SIL
 fpkm <- read.csv("fpkm.csv") #genes are indexed as in fpkm file
 rownames(mods)=fpkm$X
@@ -139,57 +142,109 @@ codes <- c('CH','CG','RH','RG','QCH','QCG')
 nurseMods <- lapply(codes,function(x) getSocMod(x))
 modPlots <- lapply(nurseMods, plotNurseMod)
 
-#Connectivity scatter-plots
-load("connMeas.RData")
+
+getConnRanks <- function(d,type){
+  d = d[order(d$kTotal,decreasing=TRUE),]
+  d$kTotalRank = seq(1,nrow(d))
+  d = d[order(d$kMod,decreasing=TRUE),]
+  d$kModRank = seq(1,nrow(d))
+  d$type = type
+  return(d)
+}
 
 #Plot relationship between connectivity within and between, for social and non-social genes
 #Calculates connectivity in entire network
-connPlots <- function(kWithin,kBetween,socInd,genesY = NULL,genesX = NULL){
-  genes = socDet[[socInd]]$Gene[socDet[[socInd]]$Gene %in% rownames(conns[[kWithin]])]
-  
-  #For within-module calculations
-  if (!is.null(genesX)) genes = genes[genes %in% genesX]
-  if (is.null(genesY)) genesY = colnames(conns[[kWithin]])
-  
-  soc = socDet[[socInd]]$geneType[socDet[[socInd]]$Gene %in% genes]
-  soc[soc!='social']='non-social'
-  withinConn <- conns[[kWithin]]
-  betweenConn <- conns[[kBetween]]
-  
-  #Connectivity defined as sum of correlations (weighted) across all genes, or genes within a module
-  wK = rowSums(withinConn[,genes])[genes]
-  bK = rowSums(betweenConn[,genesY])[genes]
-  data <- data.frame(wK = wK, bK = bK, soc = soc)
-  p <- ggplot(data,aes(x=wK,y=bK,color=soc))+
-    geom_point()+
+connPlots <- function(withinCode,soc){
+  within <- read.csv(paste(withinCode,withinCode,"connFrame.csv",sep=""))[,-c(1)]
+  between <- read.csv(paste(withinCode,"W_LconnFrame.csv",sep=""))[,-c(1)]
+  within = getConnRanks(within,"within")
+  between = getConnRanks(between,"between")
+  kDat <- rbind(within,between)
+  kDat$social = "not social"
+  kDat$social[kDat$Gene %in% socDet[[soc]]$Gene[socDet[[soc]]$geneType=="social"]]="social"
+  kM <- melt(kDat,id.vars=c("Gene","type","social"))
+  kC <- dcast(kM, Gene + social + variable ~ type)
+  p1 <- ggplot(kC[kC$variable=="kTotal",],aes(x=within,y=between,color=social))+
+    geom_point(size = 1, alpha= 0.3)+
     theme_bw()+
     xlab('connectivity within tissue')+
     ylab('connectivity with larvae')+
     geom_smooth(method='lm',se=FALSE)
-  return(p)
+  
+  p2 <- ggplot(kC[kC$variable=="kMod",],aes(x=within,y=between,color=social))+
+    geom_point(size = 1, alpha= 0.3)+
+    theme_bw()+
+    xlab('connectivity within tissue')+
+    ylab('connectivity with larvae')+
+    geom_smooth(method='lm',se=FALSE)
+  return(list(p1,p2,kC))
 }
 
-cPlot <- lapply(seq(1,6,by=1),function(i) connPlots(i+6,i,i))
-
-#Calculate sociality index, relate to evolutionary information
-socInd <- function(kWithin,kBetween,genesX=NULL,genesY=NULL){
-  withinConn <- conns[[kWithin]]
-  betweenConn <- conns[[kBetween]]
-  
-  #If we aren't working within modules
-  if (is.null(genesX)) genesX = rownames(withinConn)
-  if (is.null(genesY)) genesY = colnames(betweenConn)
-  
-  #Connectivity measurements within modules
-  wK = rowSums(withinConn[,genesX])[genesX]
-  bK = rowSums(betweenConn[,genesY])[genesX]
-  
-  #Simplist way is just the difference. If they are highly correlated, may be good to do the residual
-  socInd = bK - wK
-  return(socInd)
+#Get sociality index, as the residual of the linear model between connectivity between and within
+getSocIndex <- function(d){
+  dL = list(d[d$variable=="kTotal",],d[d$variable=="kMod",])
+  resid = lapply(dL,function (x){
+    lm <- lm(between ~ within,data=x)
+    pred <- lm$coefficients[1] + x$within*lm$coefficients[2]
+    return(x$between - pred)
+  })
+  residSoc = lapply(resid,function (x){
+    return(x > quantile(x,0.95))
+  })
+  d = as.data.frame(do.call(cbind,c(resid,residSoc)))
+  colnames(d) = c("ResidKTotal","ResidKMod","socT","socM")
+  return(d)
 }
 
-sindex = lapply(seq(1,6,by=1),function(x) socInd(i+6,i))
+lm <- glm(between ~ within*social, data = x) ##Somehow want to test if slopes are different
+
+codes <- c('CH','CG','RH','RG','QCH','QCG')
+order <- c(3,4,9,10,1,2)
+plots <- mapply(connPlots,withinCode=codes,soc=order,SIMPLIFY = FALSE)
+dFrames <- lapply(plots,function(x) x[[3]])
+socIndex <- lapply(dFrames[c(1:3,5,6)],getSocIndex)
+
+f.est <- read.csv("~/Data/Nurse_Larva/MKtestConstraintOneAlpha.csv")
+colnames(f.est) = c("Gene","f")
+
+ext <- read.csv("~/Downloads/msx123_Supp (1)/MpharAnn.csv") #load in MBE results
+for (i in 1:length(socIndex)){
+  socIndex[[i]]$Gene = unique(dFrames[[1]]$Gene)
+  socIndex[[i]] = merge(socIndex[[i]],f.est,by="Gene",all.x=TRUE)
+  dFrames[[i]] = merge(dFrames[[i]],f.est,by="Gene",all.x=TRUE)
+  dFrames[[i]] = merge(dFrames[[i]],ext,by="Gene",all.x=TRUE)
+  socIndex[[i]] = merge(socIndex[[i]],ext,by="Gene",all.x=TRUE)
+}
+
+i = 3
+e = dFrames[[i]][!is.na(dFrames[[i]]$f) & dFrames[[i]]$variable=="kTotal",]
+e$socialN = 0
+e$socialN[e$social=="social"]=1
+e$diff = e$between - e$within
+lm <- glm(diff ~ PS2,data = e)
+summary(lm)
+
+lm <- glm(log(f) ~ diff, data = e)
+av <- aov(lm)
+tukey.test <- TukeyHSD(av)
+p0 <- ggplot(e,aes(x=PS2,y=diff))+geom_boxplot()
+
+# compute lower and upper whiskers
+ylim1 = boxplot.stats(e$between)$stats[c(1, 5)]
+
+# scale y limits based on ylim1
+p1 = p0 + coord_cartesian(ylim = ylim1*1.05)
+
+wilcox.test(e$f[e$social=="social"],e$f[e$social!="social"])
+
+eM = melt(e[,c(1,4,5,6)],id.vars=c("Gene","f"))
+ggplot(eM,aes(x = value, y = f, color = variable))+
+  geom_point()+
+  geom_smooth(method = "lm",se=FALSE)
+ggplot(dFrames[[1]][!is.na(dFrames[[1]]$f)& dFrames[[i]]$variable=="kTotal",],aes(x=within,y=between,color=log(1-f)))+
+  geom_point()+scale_y_log10()+scale_x_log10()
+
+lm <- glm(f ~ social, data = socIndex[[1]])
 
 #Previously derived GO annotations
 go <- read.csv("~/Writing/Data/NurseSpecialization_transcriptomicData/GOannotation.csv")
@@ -206,43 +261,6 @@ for (gene in unique(go$gene)){
 #Are nurse social genes found in particular modules?
 
 #Note that we probably want to ask all these questions for larval social genes as well
-
-load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
-tissueNet <- function(code,pwr){
-  fpkm <- fpkm[,grepl(code,colnames(fpkm))]
-  conn = cor(t(fpkm))
-  diag(conn) <- 0
-  conns <- rowSums(abs(conn)^pwr)
-  return(conns)
-}
-
-CH <- tissueNet("CH",6)
-CG <- tissueNet("CG",6)
-W <- tissueNet("W_L",6)
-
-addConn <- function(d,conn){
-  conn = data.frame(Gene = names(conn),kTotal = conn)
-  dC = merge(d,conn,by="Gene")
-  return(dC)
-}
-
-QCH = addConn(PS_sum[[1]],CH)
-QCG = addConn(PS_sum[[2]],CG)
-QCH_L = addConn(PS_sum[[1]],W)
-QCG_L = addConn(PS_sum[[2]],W)
-
-ggplot(QCG_L,aes(x=as.factor(soc),y=kTotal))+geom_boxplot(notch=TRUE)
-
-fpkm$ID = rownames(fpkm)
-fpkm = fpkm[,c(ncol(fpkm),1:(ncol(fpkm) -1 ))]
-write.table(fpkm[,grepl("ID",colnames(fpkm)) | grepl("W_L",colnames(fpkm))],file="~/Data/Nurse_Larva/fpkm_larva.txt",row.names=FALSE,col.names=TRUE,sep="\t")
-write.csv(fpkm[,grepl("CH",colnames(fpkm))],file="~/Data/Nurse_Larva/fpkm_head.csv")
-write.csv(fpkm[,grepl("CG",colnames(fpkm))],file="~/Data/Nurse_Larva/fpkm_gaster.csv")
-
-d <- read.table("~/Data/Nurse_Larva/Results_18_Dec_17_6/Clusters_Objects.tsv",header=TRUE,sep="\t")
-
-
-
 
 
 
