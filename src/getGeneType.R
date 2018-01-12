@@ -27,9 +27,9 @@ tabType <- function(df){
   return(res)
 }
 
-allDat <- list(corQCH,corQCG,corCH,corCG,t(corQCH),t(corQCG),t(corCH),t(corCG),corRH,corRG) #Last two get Larva-Nurse social genes
+allDat <- list(corQCH,corQCG,corCH,corCG,t(corQCH),t(corQCG),t(corCH),t(corCG),corRH,corRG,t(corRH),t(corRG)) #Last two get Larva-Nurse social genes
 socDet <- lapply(allDat,tabType)
-names(socDet) = c("QCH","QCG",'CH','CG','LARV_QCH','LARV_QCG','LARV_CH','LARV_CG','RH','RG')
+names(socDet) = c("QCH","QCG",'CH','CG','LARV_QCH','LARV_QCG','LARV_CH','LARV_CG','RH','RG','LARV_RH','LARV_RG')
 save(socDet,file="socDet.RData")
 
 
