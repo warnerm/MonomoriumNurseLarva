@@ -45,7 +45,13 @@ tabGenie <- function(geneList,samp){
 }
 
 selectSocial <- function(dN,dL,pval = 0.001,boots=100){
+  setwd("~/GENIE3_R_C_wrapper") #Have to switch directories because there are .so files we need
+  source("~/GENIE3_R_C_wrapper/GENIE3.R")
   keep = lapply(c(dN,dL),function (x) socDet[[x]]$Gene[socDet[[x]]$Excess > 0 & socDet[[x]]$Pvalue < pval])
+  l = socDet[[dL]]
+  l = l[l$Pvalue < pval & l$Excess > 0,]
+  l = l[order(l$Excess,decreasing = TRUE),]
+  keep[[2]] = l$Gene[1:length(keep[[1]])]
   expr = formatExpr(dN,'W_L')
   expr <- lapply(c(1,2),function(i) expr[[i]][rownames(expr[[i]]) %in% keep[[i]],])
   rownames(expr[[1]]) = paste("nurse",rownames(expr[[1]]),sep="_")
@@ -63,16 +69,15 @@ selectSocial <- function(dN,dL,pval = 0.001,boots=100){
   larv <- tabGenie(geneList,"larv")
   results <- rbind(nurse,larv)
   socList = geneList[geneList$reg!=geneList$targ,]
-  write.csv(socList[1:1000,],paste(dN,"GenieTopSoc.csv",sep="_"))
-  write.csv(results,file=paste(dN,"GenieTabConn.csv",sep="_"))
+  write.csv(socList[1:1000,],paste("~/Nurse_Larva/",dN,"GenieTopSoc.csv",sep=""))
+  write.csv(results,file=paste("~/Nurse_Larva/",dN,"GenieTabConn.csv",sep=""))
 }
 
 runGenie <- function(run){
   setwd("~/GENIE3_R_C_wrapper") #Have to switch directories because there are .so files we need
   source("~/GENIE3_R_C_wrapper/GENIE3.R")
-  done = 0
   while (TRUE){
-    x <- try(GENIE3(as.matrix(d)))
+    x <- try(GENIE3(as.matrix(allExpr)))
     if (!inherits(x,"try-error")){ #Sometimes the data get weird, just try again!
       return(x)
     }
