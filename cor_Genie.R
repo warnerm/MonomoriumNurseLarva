@@ -56,6 +56,8 @@ selectSocial <- function(dN,dL,pval = 0.001,boots=100){
   expr <- lapply(c(1,2),function(i) expr[[i]][rownames(expr[[i]]) %in% keep[[i]],])
   rownames(expr[[1]]) = paste("nurse",rownames(expr[[1]]),sep="_")
   rownames(expr[[2]]) = paste('larv',rownames(expr[[2]]),sep="_")
+  
+  #Global variable for slurm
   allExpr <<- rbind(expr[[1]],expr[[2]])
   df <- data.frame(run=seq(1,boots,by=1))
   sjob <- slurm_apply(runGenie, df, jobname = 'parGenie',
@@ -88,3 +90,6 @@ selectSocial("CH","LARV_CH")
 selectSocial("CG","LARV_CG")
 selectSocial("RH","LARV_RH")
 selectSocial("RG","LARV_RG")
+selectSocial("QCH","LARV_QCH")
+selectSocial("QCG","LARV_QCG")
+
