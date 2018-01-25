@@ -63,7 +63,7 @@ def sortNurse(b,scramble=True):
 
 #Initalize data files with headers
 def initialize():
-    f = open('New_sortMods'+nurse+'.txt', 'w')
+    f = open('Hundred_sortMods'+nurse+'.txt', 'w')
     for n in range(np.shape(nurseD)[0]):
         f.write('gene'+str(n))
         if n < (np.shape(nurseD)[0] - 1):
@@ -73,7 +73,7 @@ def initialize():
 
 #Write a line of results
 def writeRes(res):
-    f = open('New_sortMods'+nurse+'.txt', 'a')
+    f = open('Hundred_sortMods'+nurse+'.txt', 'a')
     for n in range(np.shape(nurseD)[0]):
         f.write(str(res[n]))
         if n < (np.shape(nurseD)[0] - 1):
@@ -100,21 +100,22 @@ if __name__ == '__main__':
     mods = pd.read_table("~/Nurse_Larva/findK_clusterW_L.txt")
     mods = mods.iloc[10, :]  # Based on SIL, K = 12, which is the 11th row, is the optimal number of medoids
     meds = pd.unique(mods)  # Get list of medoids
+    runs = 100
     nurse = 'CH'
     dataL, nurseD = getMat(nurse)
-    run(1000)
+    run(runs)
     nurse = 'CG'
     dataL, nurseD = getMat(nurse)
-    run(1000)
+    run(runs)
     nurse = 'RH'
     dataL, nurseD = getMat(nurse)
-    run(1000)
+    run(runs)
     nurse = 'RG'
     dataL, nurseD = getMat(nurse)
-    run(1000)
+    run(runs)
     nurse = 'QCH'
     dataL, nurseD = getMat(nurse)
-    run(1000)
+    run(runs)
     nurse = 'QCG'
     dataL, nurseD = getMat(nurse)
-    run(1000)
+    run(runs)

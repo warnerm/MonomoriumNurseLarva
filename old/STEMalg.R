@@ -155,7 +155,6 @@ codes = c("W.*_L","QW","CH","CG","QCH","QCG","R.*_WH","R.*_WG","LCH","LCG","LW")
 names = c("WLarv","WlarvQR","NurseH","NurseG",
           "NurseHQR","NurseGQR","RNurseH","RNurseG","NurseHQL","NurseGQL","WLarvQL")
 names(names) = codes
-codes = c("LW")
 for (code in codes){
   StageExpr <- CountsbyStage(code)
   Alg(names[code])
