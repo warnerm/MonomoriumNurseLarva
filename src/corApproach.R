@@ -28,7 +28,7 @@ stageGenes <- function(code){
 }
 
 #Tests to identify genes with P < 0.05 by stage as candidates for further analysis
-tests <- c("QCH","QCG","CH","CG","RH","RG")
+tests <- c("QCH","QCG","CH","CG","RH","RG","W_L")
 DEgene <- lapply(tests,stageGenes)
 names(DEgene) = tests
 
