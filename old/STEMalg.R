@@ -6,6 +6,14 @@ library(rslurm)
 library(plyr)
 library(combinat)
 
+ext <- read.csv("MpharAnn.csv") #load in MBE results
+load("~/Dropbox/monomorium nurses/data.processed/ps_genelevelJuly29.RData")
+a = TAIgene$Mphar_E5 
+ext <- merge(ext,a,by.x="Gene",by.y="gene")
+
+#Filter for genes with phylostrata calls (they are long enough)
+keep = ext$Gene[!is.na(ext$ps)]
+
 ###Step 1: intialize dummy profiles (according to Ernst et al)
 SetProfiles <- function(timepoints){
   profiles <- matrix(ncol=timepoints)
@@ -38,7 +46,7 @@ SetProfiles <- function(timepoints){
 ###As input to the algorithm, we need the mean expression across samples of a given type at each developmental stage
 CountsbyStage <- function(code){
   load("cleandata.RData")
-  counts <- counts[,grep(code,colnames(counts))]
+  counts <- counts[rownames(counts) %in% keep,grep(code,colnames(counts))]
   factors <- factors[grep(code,rownames(factors)),]
   StageExpr <- matrix(nrow=nrow(counts),ncol=timepoints)
   stages = seq(6-timepoints,5,1) ##for sexuals, start at 2

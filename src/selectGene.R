@@ -3,11 +3,13 @@ library(edgeR)
 library(reshape2)
 
 #Load counts, factors
-load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
-ext <- read.csv("~/Downloads/msx123_Supp (1)/MpharAnn.csv") #load in MBE results
+ext <- read.csv("~/Writing/Data/NurseSpecialization_transcriptomicData/MpharAnn.csv") #load in MBE results
+load("~/Dropbox/monomorium nurses/data.processed/ps_genelevelJuly29.RData")
+a = TAIgene$Mphar_E5 
+ext <- merge(ext,a,by.x="Gene",by.y="gene")
 
-#Filter for genes 
-keep = ext$Gene[!is.na(ext$Raw.PS)]
+#Filter for genes with phylostrata calls (they are long enough)
+keep = ext$Gene[!is.na(ext$ps)]
 counts = counts[rownames(counts) %in% keep,] 
 
 ####Inital steps of standard edgeR analysis, as per manual
@@ -35,6 +37,7 @@ stageGenes <- function(code){
 tests <- c("CH","CG","RH","RG","W_L")
 DEgene <- lapply(tests,stageGenes)
 names(DEgene) = tests
+lapply(DEgene,function(x) length(x[[1]]))
 
 #Only keep genes which aren't DE for random nurses
 keepH = DEgene[[1]][[1]][!DEgene[[1]][[1]] %in% DEgene[[3]][[1]]]
