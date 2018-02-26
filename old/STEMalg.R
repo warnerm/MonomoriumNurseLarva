@@ -7,7 +7,7 @@ library(plyr)
 library(combinat)
 
 ext <- read.csv("MpharAnn.csv") #load in MBE results
-load("~/Dropbox/monomorium nurses/data.processed/ps_genelevelJuly29.RData")
+load("ps_genelevelJuly29.RData")
 a = TAIgene$Mphar_E5 
 ext <- merge(ext,a,by.x="Gene",by.y="gene")
 
