@@ -5,6 +5,7 @@ library(reshape2)
 #Load counts, factors
 ext <- read.csv("~/Writing/Data/NurseSpecialization_transcriptomicData/MpharAnn.csv") #load in MBE results
 load("~/Dropbox/monomorium nurses/data.processed/ps_genelevelJuly29.RData")
+load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
 a = TAIgene$Mphar_E5 
 ext <- merge(ext,a,by.x="Gene",by.y="gene")
 
