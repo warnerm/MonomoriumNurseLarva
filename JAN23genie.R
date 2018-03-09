@@ -83,27 +83,27 @@ allDf$tissueC[allDf$code=="CH" & allDf$tissue == "nurse"] = "nurse head \u2192 l
 allDf$tissueC[allDf$code=="CG" & allDf$tissue == "nurse"] = "nurse abdomen \u2192 larva"
 allDf$tissueC = factor(allDf$tissueC,levels = c("larva \u2192 nurse head","larva \u2192 nurse abdomen","nurse head \u2192 larva","nurse abdomen \u2192 larva"))
 
-f2b <- ggplot(allDf,aes (x = tissueC, y = reg_within/max(allDf$reg_within),fill = tissueC))+
+f2b <- ggplot(allDf,aes (x = tissueC, y = reg_within/max(allDf$reg_within)))+
   geom_boxplot(notch = TRUE)+
   ylab("within-tissue regulatory strength")+
-  xlab("tissue")+
-  theme_bw()+theme4+
+  xlab("connection type")+
+  apatheme+
   scale_y_continuous(breaks = c(0,0.2,0.4,0.6,0.8,1))+
-  scale_fill_manual(values = tissue_palette,name = "tissue")+
   theme(legend.position = "none",
-        plot.margin = unit(c(0.5,1,0.5,1),"cm"),
-        axis.text.x = element_text(angle = 315, hjust = 0.5, vjust = 0.5))
+        plot.margin = unit(c(0.5,2.5,0.5,0),"cm"),
+        axis.text.x = element_text(angle = 315, hjust = 0, vjust = 1),
+        axis.line = element_line(color="black"))
 
-f2c <- ggplot(allDf,aes (x = tissueC, y = reg_between/max(allDf$reg_within),fill = tissueC))+
+f2c <- ggplot(allDf,aes (x = tissueC, y = reg_between/max(allDf$reg_within)))+
   geom_boxplot(notch = TRUE)+
   ylab("social regulatory strength")+
-  xlab("tissue")+
-  theme_bw()+theme4+
+  xlab("connection type")+
+  apatheme+
   scale_y_continuous(breaks = c(0,0.1,0.2,0.3,0.4,0.5))+
-  scale_fill_manual(values = tissue_palette,name = "tissue")+
   theme(legend.position = "none",
-        axis.text.x = element_text(angle = 315, hjust = 0.5, vjust = 0.5),
-        plot.margin = unit(c(0.5,1,0.5,1),"cm"))
+        axis.text.x = element_text(angle = 315, hjust = 0, vjust = 1),
+        plot.margin = unit(c(0.5,2.5,0.5,0),"cm"),
+        axis.line = element_line(color="black"))
 
 f2d <- ggplot(allDf, aes(x = reg_within/max(allDf$reg_within), y = reg_between/max(allDf$reg_within), color = tissueC))+
   geom_point(alpha = 0.2)+
@@ -118,6 +118,11 @@ f2d+theme(legend.position = c(0.8,0.9),
           axis.line.y = element_line(color='black'),
           legend.title = element_text(size = 17),
           legend.background = element_blank())
+dev.off()
+
+png("~/Writing/Figures/NurseLarva/corApproach/figS2.png",height = 2000,width = 3000,res =300)
+grid.arrange(f2b+ylim(0,1)+annotate("text",x=3.5,y=0.95,label='bold("a")',parse=TRUE,size=9,color="gray29"),
+             f2c+ylim(0,0.4)+annotate("text",x=3.5,y=0.95*0.4,label='bold("b")',parse=TRUE,size=9,color="gray29"),ncol = 2)
 dev.off()
 
 ##Statistics for regulatory network topology
