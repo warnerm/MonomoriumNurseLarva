@@ -44,10 +44,15 @@ SetProfiles <- function(timepoints){
 }
 
 ###As input to the algorithm, we need the mean expression across samples of a given type at each developmental stage
-CountsbyStage <- function(code){
+CountsbyStage <- function(code,drop=NULL){
   load("cleandata.RData")
   counts <- counts[rownames(counts) %in% keep,grep(code,colnames(counts))]
-  factors <- factors[grep(code,rownames(factors)),]
+  
+  #for permuation test, drop a sample
+  if (!is.null(drop)){
+    counts = counts[,-c(drop)]
+  }
+  factors <- factors[rownames(factors) %in% colnames(counts),]
   StageExpr <- matrix(nrow=nrow(counts),ncol=timepoints)
   stages = seq(6-timepoints,5,1) ##for sexuals, start at 2
   for (j in stages){
@@ -137,7 +142,7 @@ SigProfiles <- function(Expected,Membership){
     pi = Expected$Number[i]/nGene ##Null hypothesis mean based on resampled data
     prob = binom.test(Membership$Number[i],nGene,pi,alternative="greater")$p.value
     allprob = c(allprob,prob)
-    if (prob < 0.1/(nrow(Membership)-1)){  ##Retain profiles with FDR < 0.1
+    if (prob < 0.05/(nrow(Membership)-1)){  ##Retain profiles with FDR < 0.05
       sigProf = c(sigProf,i)
     }
   }
@@ -163,7 +168,18 @@ codes = c("W.*_L","QW","CH","CG","QCH","QCG","R.*_WH","R.*_WG","LCH","LCG","LW")
 names = c("WLarv","WlarvQR","NurseH","NurseG",
           "NurseHQR","NurseGQR","RNurseH","RNurseG","NurseHQL","NurseGQL","WLarvQL")
 names(names) = codes
-for (code in codes){
-  StageExpr <- CountsbyStage(code)
-  Alg(names[code])
+#for (code in codes){
+#  StageExpr <- CountsbyStage(code)
+#  Alg(names[code])
+#}
+
+codes_perm = c("CH","CG","R.*_WH","R.*_WG")
+for (code in codes_perm){
+  load("cleandata.RData")
+  nSamp = sum(grepl(code,rownames(factors)))
+  for (i in 1:nSamp){
+    StageExpr <- CountsbyStage(code,drop=i)
+    Alg(paste(names[code],"subsamp",i,sep="_"))
+  }
 }
+
