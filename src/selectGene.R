@@ -38,6 +38,8 @@ stageGenes <- function(code){
 tests <- c("CH","CG","RH","RG","W_L")
 DEgene <- lapply(tests,stageGenes)
 names(DEgene) = tests
+
+save(DEgene,file = "~/Data/Nurse_Larva/DEstage_results.RData")
 lapply(DEgene,function(x) length(x[[1]]))
 
 #Only keep genes which aren't DE for random nurses

@@ -261,6 +261,11 @@ pm = ddply(allP, ~ Gene + PS4,summarize,
            SI = mean(SI)
            )
 
+for (lev in levels(pm$PS4)){
+  print(lev)
+  print(cor.test(1-pm$f[pm$PS4==lev],pm$SI[pm$PS4==lev]))
+}
+
 fM = lapply(levels(pm$PS4), function(x){
   cbind(bootCI(1-pm$f[pm$PS4 == x],1000),bootCI(pm$SI[pm$PS4 == x],1000))
 })
@@ -590,5 +595,43 @@ av <- aov(lm)
 summary(av)
 TukeyHSD(av,"PS2")
 
+#######
+##Adding in protein evolution
+#######
+prot <- read.csv("~/Data/Nurse_Larva/collectedPAML.csv",sep = "\t",head = F)[,c(1:6)]
+colnames(prot) = c('Amel','Sinv','Nvit','A_S','A_N','S_N')
 
+map <- read.table("~/Data/Nurse_Larva/map")
+colnames(map) = c("gene_Amel","Amel")
+prot = merge(prot,map,by="Amel")
 
+ogg2 <- read.csv("~/GitHub/devnetwork/data/HymOGG_hym.csv",sep=" ")
+t = table(ogg2$OGG)
+t = t[t==1]
+ogg11 = ogg2[ogg2$OGG %in% names(t),] #get 1-1 orthologs
+
+prot = merge(prot,ogg11)
+
+all_prot = merge(f.est,prot,by.y = "gene_Mphar",by.x = "Gene")
+all_prot$SI = "no"
+all_prot$SI[all_prot$Gene %in% pm$Gene] = "yes"
+cor.test(1-all_prot$f,all_prot$A_S)
+cor.test(1-all_prot$f,all_prot$S_N)
+cor.test(1-all_prot$f,all_prot$A_N)
+
+pm_prot = merge(pm,prot,by.x = "Gene",by.y = "gene_Mphar")
+pm_prot$rate = (pm_prot$A_N+pm_prot$S_N)/2
+cor.test(pm_prot$SI,pm_prot$A_S)
+cor.test(pm_prot$SI,pm_prot$S_N)
+cor.test(pm_prot$SI,pm_prot$A_N)
+lm <- glm(SI ~ f, data = pm_prot)
+drop1(lm,.~.,test="Chi") 
+
+ggplot(pm_prot,aes(x = rate - f, y = SI))+
+  geom_point()
+
+for (lev in levels(pm$PS4)){
+  print(sum(pm$PS4==lev))
+  print(lev)
+  print(cor.test(pm$f[pm$PS4==lev],pm$SI[pm$PS4==lev],method = "spearman"))
+}

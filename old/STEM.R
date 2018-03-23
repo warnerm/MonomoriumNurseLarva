@@ -12,7 +12,7 @@ library(ggmosaic)
 library(questionr)
 library(VennDiagram)
 library(multcomp)
-library(boot)
+library(cowplot)
 library(gtable)
 
 
@@ -188,13 +188,13 @@ nGeneL <- lapply(res,function(x){
 })
 
 #Barplot
-d = data.frame(t = c(rep(c("larva \u2192 nurse head","larva \u2192 nurse abdomen"),each=2),rep(c("nurse head \u2192 larva","nurse abdomen \u2192 larva"),each=2)),
+d_bar = data.frame(t = c(rep(c("larva \u2192 nurse head","larva \u2192 nurse abdomen"),each=2),rep(c("nurse head \u2192 larva","nurse abdomen \u2192 larva"),each=2)),
                N = c(unlist(nGeneL),unlist(nGene)),
                type = rep(c("stage-specific nurse       ","random nurse       "),4))
 
-d$type = factor(d$type, levels = c("stage-specific nurse       ","random nurse       "))
+d_bart$type = factor(d$type, levels = c("stage-specific nurse       ","random nurse       "))
 
-p <- ggplot(d,aes(x = t,y=N,fill=type))+
+p <- ggplot(d_bar,aes(x = t,y=N,fill=type))+
   geom_bar(stat="identity",color="black",position = position_dodge())+
   scale_fill_manual(values = c("gray59","black"))+
   apatheme+
@@ -441,10 +441,14 @@ grid.lines(x=unit(c(0.47,0.5),"npc"),y=unit(c(0.515,0.57),"npc"),gp=gpar(lwd=2,l
 dev.off()
 
 
-
-png("~/Writing/Figures/NurseLarva/corApproach/allTogether2.png",height = 4000, width = 6000, res = 300)
+theme_new = theme(axis.text = element_text(size = 13),
+                        axis.title = element_text(size = 15),
+                        legend.text = element_text(size = 13),
+                        legend.title = element_text(size = 15))
+svg("~/Writing/Figures/NurseLarva/corApproach/allTogether2.svg",height = 8, width = 12)
 ggdraw()+
   draw_plot(Hplot[[1]]+scale_y_continuous(limits = c(-1.5,1.5))+
+              theme_new+
               theme(legend.position = c(0.65,0.2),
                     axis.line = element_line(color = "black"))+
               annotate("text",x = 1.2,y=1.2,label="a",size=14,color="gray29")+
@@ -452,12 +456,14 @@ ggdraw()+
   draw_plot(Hplot[[2]]+scale_y_continuous(limits = c(-2,2)), x = 0.09, y = 0.59, width = 0.15, height = 0.175)+
   draw_plot(Gplot[[1]]+annotate("text",x = 1.2,y=.4,label="b",size=14,color="gray29")+
               scale_y_continuous(limits = c(-1.5,0.5))+
+              theme_new+
               theme(legend.position = c(0.8,0.8),
                     axis.line = element_line(color = "black")),
             x = 0.55, y = 0.55, width = 0.4, height = 0.45)+
   draw_plot(Gplot[[2]],  x = 0.59, y = 0.59, width = 0.15, height = 0.175)+
   draw_plot(HLplot[[1]]+annotate("text",x = 1.2,y=1.6,label="c",size=14,color="gray29")+
               scale_y_continuous(limits = c(-2,2))+
+              theme_new+
               theme(legend.position = c(0.65,0.2),
                     axis.line = element_line(color = "black")),
             x = 0.05, y = 0, width = 0.4, height = 0.45)+
@@ -465,6 +471,7 @@ ggdraw()+
   draw_plot(GLplot[[1]]+
               annotate("text",x = 1.2,y=.8,label="d",size=14,color="gray29")+
               scale_y_continuous(limits = c(-2.5,1))+
+              theme_new+
               theme(legend.position = c(0.8,0.8),
                     axis.line = element_line(color = "black")),
             x = 0.55, y = 0, width = 0.4, height = 0.45)+
@@ -488,5 +495,69 @@ grid.lines(x=unit(c(0.49,0.6),"npc"),y=unit(c(0.46,0.455),"npc"),gp=gpar(lwd=2.5
 grid.lines(x=unit(c(0.47,0.55),"npc"),y=unit(c(0.445,0.25),"npc"),gp=gpar(lwd=2.5,lty="dotted"))
 
 dev.off()
+
+#######
+##Loading drop-1 STEM
+#######
+Lmod = unique(STEMdata[["WLarv"]][[1]])
+Lmod = Lmod[!is.na(Lmod)]
+
+calcOverlap <- function(data,Cmod){
+  mods = unique(data)
+  shared = mods[mods %in% Cmod]
+  Nshared = mods[(81-mods) %in% Cmod]
+  nGene = sum(data[!is.na(data)] %in% shared,na.rm=T) + sum(data[!is.na(data)] %in% Nshared,na.rm = T)
+  return(nGene)
+}
+
+patterns = c("^NurseH","RNurseH","^NurseG","RNurseG")
+files <- lapply(patterns,function(x) dir("~/Data/Nurse_Larva/STEM_drop1/",pattern=x))
+
+drop1Data <- lapply(files,function(x){
+  lapply(x, function(i){
+    load(paste("~/Data/Nurse_Larva/STEM_drop1/",i,sep=""))
+    return(results)
+  })
+})
+
+nGeneShared <- lapply(drop1Data,function(x){
+  unlist(lapply(x,function(i){
+    calcOverlap(i[[1]],Lmod)
+  }))
+})
+
+nGeneShared_Larv <- lapply(drop1Data,function(x){
+  unlist(lapply(x,function(i){
+    calcOverlap(STEMdata[["WLarv"]][[1]],unique(i[[1]]))
+  }))
+})
+
+nGeneStats <- ldply(lapply(c(nGeneShared_Larv,nGeneShared),function(x){
+  return(c(mean(x),quantile(x,0.025),quantile(x,0.975)))
+}))
+colnames(nGeneStats) = c("mean","ci1","ci2")
+d_bar = cbind(d_bar,nGeneStats)
+
+
+p <- ggplot(d_bar,aes(x = t,y=mean,fill=type))+
+  geom_bar(stat="identity",color="black",position = position_dodge())+
+  scale_fill_manual(values = c("gray70","gray45"))+
+  apatheme+
+  ylab("number of genes")+
+  xlab("connection type")+
+  theme(legend.position = "top",
+        legend.title = element_blank(),
+        plot.margin = unit(c(0.5,1,0.5,1),"cm"),
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1,size=15),
+        axis.title.y=element_text(margin=margin(t=0,r=15,b=0,l=0),size=17),
+        axis.title.x=element_text(margin=margin(t=15,r=0,b=0,l=0),size=17),
+        axis.line = element_line(color="black"),
+        legend.text=element_text(size=15))+
+  geom_errorbar(aes(ymin=ci1,ymax=ci2),position=position_dodge(width = 0.9),width = 0.5,size=1)
+
+svg("~/Writing/Figures/NurseLarva/corApproach/NgeneSup_errorbar.svg",height = 10, width = 6)
+p
+dev.off()
+ggsave(p,file="~/Writing/Figures/NurseLarva/corApproach/NgeneSup_errorbar.png",height=10,width=6,dpi=300)
 
 
