@@ -97,9 +97,12 @@ d_hst = quantile_normalisation(d_hst)
 datExpr = t(d_hst)
 softPower = 7;
 
-runWGCNA(datExpr,softPower,"focal_metasample")
+#runWGCNA(datExpr,softPower,"focal_metasample")
 
 d <- metaExpr(codes = c('RH','RG','W_L'))
+
+SD <- apply(d,1,sd)
+d = d[SD!=0,]
 
 #According to WGCNA_sft.R, inverse hyperbolic sine transformation performs the best by scale-free fit. power = 9 for random nurses (fewer samples)
 d_hst <- log(d+sqrt(d*d+1))
