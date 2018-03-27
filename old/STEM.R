@@ -172,7 +172,7 @@ nGene <- lapply(res,function(x){
 })
 
 tbl = do.call(cbind,lapply(list(nMod,nPos,nNeg,nGene),unlist))
-colnames(tbl) = c("total dominant profiles","profiles positively\nshared with larvae","profiles negatively\nshared with larvae","number of genes\nin shared profiles")
+colnames(tbl) = c("number of\nsignificantly-enriched profiles","profiles positively\nshared with larvae","profiles negatively\nshared with larvae","number of genes\nin shared profiles")
 rownames(tbl) = c("stage-specific nurse head","random nurse head","stage-specific nurse abdomen","random nurse abdomen")
 
 makeTbl(tbl,"STEMtable",8)
@@ -258,8 +258,8 @@ sharedPlot <- function(mod,tissue,df,pal,flip = FALSE){
           axis.line.x = element_line(color="black"),
           axis.line.y = element_line("black"),
           legend.background = element_blank(),
-          legend.title = element_text(size=15),
-          legend.text = element_text(size = 13),
+          legend.title = element_text(size=13),
+          legend.text = element_text(size = 11),
           legend.title.align = -1)
   p1 <- p1 + geom_line(data = nMed,aes(x = variable,y=med,group=Module),alpha = 1,size = 1.5,color="black")+
     geom_line(data = nMed,aes(x = variable,y=med,group=Module,color = Module),alpha = 1,size = 1.2)
@@ -441,27 +441,30 @@ grid.lines(x=unit(c(0.47,0.5),"npc"),y=unit(c(0.515,0.57),"npc"),gp=gpar(lwd=2,l
 dev.off()
 
 
-theme_new = theme(axis.text = element_text(size = 13),
-                        axis.title = element_text(size = 15),
-                        legend.text = element_text(size = 13),
-                        legend.title = element_text(size = 15))
-svg("~/Writing/Figures/NurseLarva/corApproach/allTogether2.svg",height = 8, width = 12)
+theme_new = theme(axis.text = element_text(size = 11),
+                        axis.title = element_text(size = 13),
+                        legend.text = element_text(size = 11),
+                        legend.title = element_text(size = 13),
+                  legend.key.height = unit(1,"lines"))
+
+
+svg("~/Writing/Figures/NurseLarva/corApproach/allTogether2.svg",height = 8, width = 12,res=300)
 ggdraw()+
   draw_plot(Hplot[[1]]+scale_y_continuous(limits = c(-1.5,1.5))+
               theme_new+
               theme(legend.position = c(0.65,0.2),
                     axis.line = element_line(color = "black"))+
-              annotate("text",x = 1.2,y=1.2,label="a",size=14,color="gray29")+
+              annotate("text",x = 1.2,y=1.2,label="a",size=12,color="gray29")+
               ylab("-log2 expression change from initial stage"), x = 0.05, y = 0.55, width = 0.4, height = 0.45)+
   draw_plot(Hplot[[2]]+scale_y_continuous(limits = c(-2,2)), x = 0.09, y = 0.59, width = 0.15, height = 0.175)+
-  draw_plot(Gplot[[1]]+annotate("text",x = 1.2,y=.4,label="b",size=14,color="gray29")+
-              scale_y_continuous(limits = c(-1.5,0.5))+
+  draw_plot(Gplot[[1]]+annotate("text",x = 1.2,y=.4,label="b",size=12,color="gray29")+
+              scale_y_continuous(limits = c(-2,0.5),labels = c(-2,-1,0),breaks = c(-2,-1,0))+
               theme_new+
               theme(legend.position = c(0.8,0.8),
                     axis.line = element_line(color = "black")),
             x = 0.55, y = 0.55, width = 0.4, height = 0.45)+
   draw_plot(Gplot[[2]],  x = 0.59, y = 0.59, width = 0.15, height = 0.175)+
-  draw_plot(HLplot[[1]]+annotate("text",x = 1.2,y=1.6,label="c",size=14,color="gray29")+
+  draw_plot(HLplot[[1]]+annotate("text",x = 1.2,y=1.6,label="c",size=12,color="gray29")+
               scale_y_continuous(limits = c(-2,2))+
               theme_new+
               theme(legend.position = c(0.65,0.2),
@@ -469,11 +472,11 @@ ggdraw()+
             x = 0.05, y = 0, width = 0.4, height = 0.45)+
   draw_plot(HLplot[[2]]+scale_y_continuous(limits = c(-2,2)), x = 0.09, y = 0.04, width = 0.15, height = 0.175)+
   draw_plot(GLplot[[1]]+
-              annotate("text",x = 1.2,y=.8,label="d",size=14,color="gray29")+
+              annotate("text",x = 1.2,y=.8,label="d",size=12,color="gray29")+
               scale_y_continuous(limits = c(-2.5,1))+
-              theme_new+
               theme(legend.position = c(0.8,0.8),
-                    axis.line = element_line(color = "black")),
+                    axis.line = element_line(color = "black"))+
+              theme_new,
             x = 0.55, y = 0, width = 0.4, height = 0.45)+
   draw_plot(GLplot[[2]], x = 0.59, y = 0.04, width = 0.15, height = 0.175)+
   draw_plot(rasterGrob(image,x = 0, y = 0),x=.48,y=0.58,width=0.3/mult,height=0.3)
@@ -537,7 +540,7 @@ nGeneStats <- ldply(lapply(c(nGeneShared_Larv,nGeneShared),function(x){
 }))
 colnames(nGeneStats) = c("mean","ci1","ci2")
 d_bar = cbind(d_bar,nGeneStats)
-
+d_bar$type = factor(d_bar$type, levels = levels(d_bar$type)[c(2,1)])
 
 p <- ggplot(d_bar,aes(x = t,y=mean,fill=type))+
   geom_bar(stat="identity",color="black",position = position_dodge())+
@@ -553,6 +556,7 @@ p <- ggplot(d_bar,aes(x = t,y=mean,fill=type))+
         axis.title.x=element_text(margin=margin(t=15,r=0,b=0,l=0),size=17),
         axis.line = element_line(color="black"),
         legend.text=element_text(size=15))+
+  annotate("text",x = 1,y=9000,label="e",size=14,color="gray29")+
   geom_errorbar(aes(ymin=ci1,ymax=ci2),position=position_dodge(width = 0.9),width = 0.5,size=1)
 
 svg("~/Writing/Figures/NurseLarva/corApproach/NgeneSup_errorbar.svg",height = 10, width = 6)
