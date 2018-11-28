@@ -71,58 +71,64 @@ runWGCNA <- function(datExpr,softPower,name){
   save(MEs,moduleLabels,moduleColors,geneTree,file = paste("Network",name,".RData",sep=""))
 }
 
-# datExpr <- fpkm[,grepl("CH|CG|W_L",colnames(fpkm))]
-# d <- datExpr
-# tissue = rep('head',ncol(datExpr))
-# tissue[grepl("G",colnames(datExpr))]='gaster'
-# tissue[grepl("L",colnames(datExpr))]='larva'
-# 
-# #Try rlog transformation
-# d_rlog <- rlog(floor(as.matrix(d)))
-# 
-# #variance stabilizing transformation
-# d_vst <- varianceStabilizingTransformation(floor(as.matrix(d)))
-# 
-# #inverse hyperbolic sine transformation
-# d_hst <- log(d+sqrt(d*d+1))
-# 
-# plotSFT(t(quantile_normalisation(ComBat(d_rlog,batch = tissue))),"rlog_combat")
-# plotSFT(t(quantile_normalisation(ComBat(d_vst,batch = tissue))),"vst_combat")
-# plotSFT(t(quantile_normalisation(ComBat(d_hst,batch = tissue))),"hst_combat")
-# 
-# 
-# datExpr <- fpkm[,grepl("RH|RG|W_L",colnames(fpkm))]
-# d <- datExpr
-# tissue = rep('head',ncol(datExpr))
-# tissue[grepl("G",colnames(datExpr))]='gaster'
-# tissue[grepl("L",colnames(datExpr))]='larva'
-# 
-# d_hst <- log(d+sqrt(d*d+1))
-# d_rlog <- rlog(floor(as.matrix(d)))
-# d_vst <- varianceStabilizingTransformation(floor(as.matrix(d)))
-# plotSFT(t(quantile_normalisation(ComBat(d_rlog,batch = tissue))),"rlog_combat_random")
-# plotSFT(t(quantile_normalisation(ComBat(d_vst,batch = tissue))),"vst_combat_random")
-# plotSFT(t(quantile_normalisation(ComBat(d_hst,batch = tissue))),"hst_combat_random")
-
-###Conclusion: vst, softpower = 10 for both
 datExpr <- fpkm[,grepl("CH|CG|W_L",colnames(fpkm))]
 d <- datExpr
 tissue = rep('head',ncol(datExpr))
 tissue[grepl("G",colnames(datExpr))]='gaster'
 tissue[grepl("L",colnames(datExpr))]='larva'
+colony = rep(1,ncol(datExpr))
+colony[grepl('X2',colnames(datExpr))]=2
+colony[grepl('X3',colnames(datExpr))]=3
+
+#Try rlog transformation
+d_rlog <- rlog(floor(as.matrix(d)))
+
+#variance stabilizing transformation
 d_vst <- varianceStabilizingTransformation(floor(as.matrix(d)))
-datExpr <- t(quantile_normalisation(ComBat(d_vst,batch = tissue)))
-runWGCNA(datExpr,10,"focal_combat")
+
+#inverse hyperbolic sine transformation
+d_hst <- log(d+sqrt(d*d+1))
+
+plotSFT(t(quantile_normalisation(ComBat(d_rlog,batch = tissue))),"rlog_combat")
+plotSFT(t(quantile_normalisation(ComBat(d_vst,batch = tissue))),"vst_combat")
+plotSFT(t(quantile_normalisation(ComBat(d_hst,batch = tissue))),"hst_combat")
+
 
 datExpr <- fpkm[,grepl("RH|RG|W_L",colnames(fpkm))]
 d <- datExpr
 tissue = rep('head',ncol(datExpr))
 tissue[grepl("G",colnames(datExpr))]='gaster'
 tissue[grepl("L",colnames(datExpr))]='larva'
-d_vst <- varianceStabilizingTransformation(floor(as.matrix(d)))
-datExpr <- t(quantile_normalisation(ComBat(d_vst,batch = tissue)))
-runWGCNA(datExpr,10,"random_combat")
+colony = rep(1,ncol(datExpr))
+colony[grepl('X2',colnames(datExpr))]=2
+colony[grepl('X3',colnames(datExpr))]=3
 
+d_hst <- log(d+sqrt(d*d+1))
+d_rlog <- rlog(floor(as.matrix(d)))
+d_vst <- varianceStabilizingTransformation(floor(as.matrix(d)))
+plotSFT(t(quantile_normalisation(ComBat(d_rlog,batch = tissue))),"rlog_combat_random")
+plotSFT(t(quantile_normalisation(ComBat(d_vst,batch = tissue))),"vst_combat_random")
+plotSFT(t(quantile_normalisation(ComBat(d_hst,batch = tissue))),"hst_combat_random")
+# 
+# ###Conclusion: vst, softpower = 10 for both
+# datExpr <- fpkm[,grepl("CH|CG|W_L",colnames(fpkm))]
+# d <- datExpr
+# tissue = rep('head',ncol(datExpr))
+# tissue[grepl("G",colnames(datExpr))]='gaster'
+# tissue[grepl("L",colnames(datExpr))]='larva'
+# d_vst <- varianceStabilizingTransformation(floor(as.matrix(d)))
+# datExpr <- t(quantile_normalisation(ComBat(d_vst,batch = tissue)))
+# runWGCNA(datExpr,10,"focal_combat")
+# 
+# datExpr <- fpkm[,grepl("RH|RG|W_L",colnames(fpkm))]
+# d <- datExpr
+# tissue = rep('head',ncol(datExpr))
+# tissue[grepl("G",colnames(datExpr))]='gaster'
+# tissue[grepl("L",colnames(datExpr))]='larva'
+# d_vst <- varianceStabilizingTransformation(floor(as.matrix(d)))
+# datExpr <- t(quantile_normalisation(ComBat(d_vst,batch = tissue)))
+# runWGCNA(datExpr,10,"random_combat")
+# 
 
 
 
