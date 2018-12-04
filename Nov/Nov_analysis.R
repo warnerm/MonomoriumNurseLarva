@@ -646,34 +646,6 @@ colnames(GsNH)[6] = colnames(GsNG)[6] = "P-value"
 makeTbl2(GsNH,"NHGO",8)
 makeTbl2(GsNG,"NGGO",8)
 
-collapseRep <- function(code){
-  expr <- log(fpkm[,grepl(code,colnames(fpkm))])
-  f = factors[grepl(code,rownames(factors)),]
-  e = lapply(seq(1,5),function(i) rowMeans(expr[,f$stage==i]))
-  e2 = do.call(cbind,e)
-  colnames(e2) = paste("stage",seq(1,5),sep="_")
-  return(e2)
-}
-
-exprTime <- function(gene,N,L){
-  
-}
-
-CHe = collapseRep("CH")
-CGe = collapseRep("CG")
-Le = collapseRep("W_L")
-Le2 = collapseRep("LS")
-
-
-#giant-lens
-gL = CHe[rownames(CHe)=="LOC105830675",]
-
-a = ext[grepl("Epidermal growth factor receptor",ext$SwissProt),]
-
-#EGFR receptor
-egfr = Le[rownames(Le) %in% a$Gene,]
-cor.test(gL[2:5],egfr2[2:5],method="spearman")
-egfr2 = Le2[rownames(Le2) %in% a$Gene,]
 
 #spitz is LOC105833934
 #EGFR substrate 8 is LOC105837907
@@ -690,10 +662,57 @@ expr2$sample = "eps8  (larva)"
 e = rbind(expr,expr2)
 #e$stage = as.numeric(as.character(e$stage))
 levels(e$stage) = c("L1","L2","L3","L4","L5")
-labs <- sapply(strsplit(as.character(levels(as.factor(e$sample))),"  "),
-               function(x) { 
-                parse(text = paste0("italic('",x[1], "')~",x[2]))   
-              })
+
+p <- ggplot(e,aes(x=stage,y=expression,color=sample))+
+  geom_point()+
+  ylim(1,3.5)+
+  geom_smooth(aes(group=sample,fill=sample),color="black")+
+  xlab("larval developmental stage")+
+  scale_color_manual(values = tissue_palette[c(1,3)])+
+  scale_fill_manual(values = tissue_palette[c(1,3)])+
+  theme(legend.position = "none",
+        panel.background = element_blank(),
+        axis.line.x = element_line(color='black'),
+        axis.line.y = element_line(color='black'),
+        axis.title = element_text(size = 20, face = "bold"),
+        axis.text = element_text(size = 15))+
+  annotate("text",x=4.1,y=3.2,label=parse(text=paste0("italic('eps8')~(larva)")),size=6)+
+  annotate("text",x=4.3,y=1.2,label=parse(text=paste0("italic('giant-lens')~(nurse)")),size=6)
+
+ggsave(p,file="~/GitHub/MonomoriumNurseLarva/Figures/gl_egfr.png",height=6,width=6.5,dpi=600)
+
+
+p <- ggplot(e[grepl("nurse",e$sample),],aes(x=stage,y=expression,color=sample))+
+  geom_point()+
+  ylim(1,3.5)+
+  geom_smooth(aes(group=sample,fill=sample),color="black")+
+  xlab("larval developmental stage")+
+  scale_color_manual(values = tissue_palette[c(3)])+
+  scale_fill_manual(values = tissue_palette[c(3)])+
+  theme(legend.position = "none",
+        panel.background = element_blank(),
+        axis.line.x = element_line(color='black'),
+        axis.line.y = element_line(color='black'),
+        axis.title = element_text(size = 20, face = "bold"),
+        axis.text = element_text(size = 15))+
+  annotate("text",x=4.3,y=1.2,label=parse(text=paste0("italic('giant-lens')~(nurse)")),size=6)
+
+ggsave(p,file="~/GitHub/MonomoriumNurseLarva/Figures/gl_egfr_justnurse.png",height=6,width=6.5,dpi=600)
+
+##With sexual larvae
+fCH = factors[grepl("XH",rownames(factors)),]
+eCH = log(fpkm["LOC105830675",colnames(fpkm) %in% rownames(fCH)])
+fLW = factors[grepl("LS",rownames(factors)),]
+eLW = log(fpkm["LOC105837907",colnames(fpkm) %in% rownames(fLW)])
+
+expr = data.frame(gL = t(eCH),stage = fCH$stage)
+expr2 = data.frame(gL = t(eLW),stage = fLW$stage)
+colnames(expr)[1] = colnames(expr2)[1] = "expression"
+expr$sample = "giant-lens  (nurse head)"
+expr2$sample = "eps8  (larva)"
+e = rbind(expr,expr2)
+#e$stage = as.numeric(as.character(e$stage))
+levels(e$stage) = c("L1","L2","L3","L4","L5")
 
 p <- ggplot(e,aes(x=stage,y=expression,color=sample))+
   geom_point()+
@@ -702,13 +721,16 @@ p <- ggplot(e,aes(x=stage,y=expression,color=sample))+
   scale_color_manual(values = tissue_palette[c(1,3)])+
   scale_fill_manual(values = tissue_palette[c(1,3)])+
   theme(legend.position = "none",
+        panel.background = element_blank(),
         axis.line.x = element_line(color='black'),
         axis.line.y = element_line(color='black'),
         axis.title = element_text(size = 20, face = "bold"),
         axis.text = element_text(size = 15))+
-  annotate("text",x=4.1,y=3.2,label=parse(text=paste0("italic('eps8')~(larva)")),size=6)+
-  annotate("text",x=4.3,y=1.2,label=parse(text=paste0("italic('giant-lens')~(nurse)")),size=6)
+  annotate("text",x=3.1,y=3.2,label=parse(text=paste0("italic('eps8')~(sex_larva)")),size=6)+
+  annotate("text",x=3.3,y=1.2,label=parse(text=paste0("italic('giant-lens')~(sex_nurse)")),size=6)
 
-ggsave(p,file="~/GitHub/MonomoriumNurseLarva/Figures/gl_egfr.png",height=6,width=6.5,dpi=300)
+ggsave(p,file="~/GitHub/MonomoriumNurseLarva/Figures/gl_egfr_sex.png",height=6,width=6.5,dpi=600)
+
+
 
 

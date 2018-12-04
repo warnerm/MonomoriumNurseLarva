@@ -16,6 +16,21 @@ library(cowplot)
 library(gtable)
 
 
+apatheme=theme_bw()+
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        text=element_text(family='Arial'),
+        legend.position=c("top"),
+        axis.line.x = element_line(color='black'),
+        axis.line.y = element_line(color='black'),
+        axis.text=element_text(size=13),
+        axis.title=element_text(size=17,face="bold"),
+        legend.text=element_text(size=13),
+        axis.title.y = element_text(margin = margin(t=0,r=10,b=0,l=0)),
+        axis.title.x = element_text(margin = margin(t=10,r=0,b=0,l=0)))
+
 makeTbl <- function(tbl,name,font){
   
   tt3 <- ttheme_minimal(
@@ -278,34 +293,6 @@ sharedPlot <- function(mod,tissue,df,pal,flip = FALSE){
   return(list(p1,p1o))
 }
 
-pieCharts <- function(data,tissue){
-  mod2 = as.integer(as.character(data[[3]]))
-  
-  #Nurse negatively associated modules are indexed as larval modules
-  if (tissue=="nurse") mod2 = 81 - mod2
-  mods = c(data[[2]],mod2)
-  mods = mods[!is.na(mods)]
-  totShared = sum(data[[1]]$Module %in% mods & data[[1]]$tissue == tissue)/5
-  d = data.frame(Prop = c(totShared/9344,(9344-totShared)/9344),Shared = c('a','b'),lev = c('same','same'))
-  p <- ggplot(d,aes(x = lev,y = Prop, fill = Shared))+
-    geom_bar(stat="identity",width =1,color="gray47")+
-    coord_polar(theta = "y")+
-    theme_bw()+
-    scale_fill_manual(values = c("black","gray86"))+
-    theme(legend.position = "none",
-          axis.line = element_blank(),
-          plot.background = element_blank(),
-          axis.title = element_blank(),
-          axis.ticks = element_blank(),
-          axis.text = element_blank(),
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank(),
-          panel.background = element_blank(),
-          panel.border = element_blank(),
-          plot.margin = margin(t=0,l=0,r=0,b=0))
-  return(p)
-}
-
 barCharts <- function(data1,data2,tissue){
   shared = lapply(list(data1,data2),function(d){
     mod2 = as.integer(as.character(d[[3]]))
@@ -337,16 +324,6 @@ GLplot <- sharedPlot(Gmod,"larva",Gshare[[1]],pal1)
 Hplot <- sharedPlot(Hmod,"nurse",Hshare[[1]],pal2,flip = TRUE)
 HLplot <- sharedPlot(lMod,"larva",Hshare[[1]],pal2)
 
-pieG <- pieCharts(Gshare,"nurse")
-pieGL <- pieCharts(Gshare,"larva")
-pieH <- pieCharts(Hshare,"nurse")
-pieHL <- pieCharts(Hshare,"larva")
-
-pieRG <- pieCharts(RGshare,"nurse")
-pieRGL <- pieCharts(RGshare,"larva")
-pieRH <- pieCharts(RHshare,"nurse")
-pieRHL <- pieCharts(RHshare,"larva")
-
 vp <- viewport(width = 0.3, height = 0.3, x = 0.25, y = 0.25)
 
 library(cowplot)
@@ -355,130 +332,49 @@ image <- rsvg("~/Downloads/smaller larva with shadow.svg")
 mult=dim(image)[1]/dim(image)[2]
 
 
-png("~/Writing/Figures/NurseLarva/corApproach/allTogether.png",height = 4000, width = 6000, res = 300)
-ggdraw()+
-  draw_plot(Hplot[[1]]+scale_y_continuous(limits = c(-1.5,1.5))+
-              theme(legend.position = c(0.7,0.2),
-                    axis.line = element_line(color = "black"))+
-              annotate("text",x = 1.2,y=1.2,label="b",size=14,color="gray29")+
-              ylab("-log2 expression change from initial stage"), x = 0.44, y = 0.55, width = 0.4, height = 0.45)+
-  draw_plot(Hplot[[2]]+scale_y_continuous(limits = c(-2,2)), x = 0.48, y = 0.59, width = 0.15, height = 0.175)+
-  draw_plot(pieH,x = 0.705, y = 0.61,width=0.1,height=0.1)+
-  draw_plot(pieRH,x = 0.73, y = 0.635,width=0.05,height=0.05)+
-  draw_plot(HLplot[[1]]+annotate("text",x = 1.2,y=1.6,label="a",size=14,color="gray29")+
-              scale_y_continuous(limits = c(-2,2))+
-              theme(legend.position = c(0.7,0.2),
-                    axis.line = element_line(color = "black")),
-            x = 0, y = 0.5, width = 0.4, height = 0.45)+
-  draw_plot(pieHL,x = 0.26, y = 0.56,width=0.1,height=0.1)+
-  draw_plot(pieRHL,x = 0.285, y = 0.585,width=0.05,height=0.05)+
-  draw_plot(HLplot[[2]]+scale_y_continuous(limits = c(-2,2)), x = 0.04, y = 0.54, width = 0.15, height = 0.175)+
-  draw_plot(Gplot[[1]]+annotate("text",x = 1.2,y=.4,label="d",size=14,color="gray29")+
-              scale_y_continuous(limits = c(-1.5,0.5))+
-              theme(legend.position = c(0.85,0.85),
-                    axis.line = element_line(color = "black")),
-            x = 0.55, y = 0.04, width = 0.4, height = 0.45)+
-  draw_plot(pieG,x = 0.87, y = 0.36,width=0.1,height=0.1)+
-  draw_plot(pieRG,x = 0.895, y = 0.385,width=0.05,height=0.05)+
-  draw_plot(Gplot[[2]],  x = 0.59, y = 0.08, width = 0.15, height = 0.175)+
-  draw_plot(GLplot[[1]]+
-              annotate("text",x = 1.2,y=.8,label="c",size=14,color="gray29")+
-              scale_y_continuous(limits = c(-2.5,1))+
-              theme(legend.position = c(0.8,0.78),
-                    axis.line = element_line(color = "black")),
-            x = 0.08, y = 0, width = 0.4, height = 0.45)+
-  draw_plot(pieGL,x = 0.375, y = 0.293,width=0.1,height=0.1)+
-  draw_plot(pieRGL,x = 0.4, y = 0.318,width=0.05,height=0.05)+
-  draw_plot(Gplot[[2]], x = 0.12, y = 0.04, width = 0.15, height = 0.175)+
-  draw_plot(rasterGrob(image,x = 0, y = 0),x=.45,y=0.56,width=0.3/mult,height=0.3)
-grid.lines(x=unit(c(0.2,0.36),"npc"),y=unit(c(0.5,0.49),"npc"),gp=gpar(lwd=2,lty="dashed"))
-grid.lines(x=unit(c(0.40,0.42),"npc"),y=unit(c(0.85,0.5),"npc"),gp=gpar(lwd=2,lty="dashed"))
-grid.lines(x=unit(c(0.36,0.25),"npc"),y=unit(c(0.44,0.41),"npc"),gp=gpar(lwd=2,lty="dashed"))
-grid.lines(x=unit(c(0.45,0.48),"npc"),y=unit(c(0.42,0.22),"npc"),gp=gpar(lwd=2,lty="dashed"))
-grid.lines(x=unit(c(0.53,0.55),"npc"),y=unit(c(0.49,0.3),"npc"),gp=gpar(lwd=2,lty="dashed"))
-grid.lines(x=unit(c(0.56,0.65),"npc"),y=unit(c(0.53,0.49),"npc"),gp=gpar(lwd=2,lty="dashed"))
-grid.lines(x=unit(c(0.455,0.46),"npc"),y=unit(c(0.51,0.62),"npc"),gp=gpar(lwd=2,lty="dashed"))
-grid.lines(x=unit(c(0.47,0.5),"npc"),y=unit(c(0.515,0.57),"npc"),gp=gpar(lwd=2,lty="dashed"))
-dev.off()
+theme_new = theme(legend.text = element_text(size = 9),
+                  legend.title = element_text(size = 11,face="bold",
+                                              margin = margin(t=0,b=-10,r=0,l=0)),
+                  legend.key.height = unit(0.6,"lines"))
 
+theme_small = theme(axis.text = element_text(size=9),
+                    axis.line = element_line())
 
-png("~/Writing/Figures/NurseLarva/corApproach/allTogether.png",height = 4000, width = 6000, res = 300)
-ggdraw()+
-  draw_plot(Hplot[[1]]+scale_y_continuous(limits = c(-1.5,1.5))+
-              theme(legend.position = c(0.7,0.2),
-                    axis.line = element_line(color = "black"))+
-              annotate("text",x = 1.2,y=1.2,label="b",size=14,color="gray29")+
-              ylab("-log2 expression change from initial stage"), x = 0.44, y = 0.55, width = 0.4, height = 0.45)+
-  draw_plot(Hplot[[2]]+scale_y_continuous(limits = c(-2,2)), x = 0.48, y = 0.59, width = 0.15, height = 0.175)+
-  draw_plot(HLplot[[1]]+annotate("text",x = 1.2,y=1.6,label="a",size=14,color="gray29")+
-              scale_y_continuous(limits = c(-2,2))+
-              theme(legend.position = c(0.7,0.2),
-                    axis.line = element_line(color = "black")),
-            x = 0, y = 0.5, width = 0.4, height = 0.45)+
-  draw_plot(HLplot[[2]]+scale_y_continuous(limits = c(-2,2)), x = 0.04, y = 0.54, width = 0.15, height = 0.175)+
-  draw_plot(Gplot[[1]]+annotate("text",x = 1.2,y=.4,label="d",size=14,color="gray29")+
-              scale_y_continuous(limits = c(-1.5,0.5))+
-              theme(legend.position = c(0.85,0.85),
-                    axis.line = element_line(color = "black")),
-            x = 0.55, y = 0.04, width = 0.4, height = 0.45)+
-  draw_plot(Gplot[[2]],  x = 0.59, y = 0.08, width = 0.15, height = 0.175)+
-  draw_plot(GLplot[[1]]+
-              annotate("text",x = 1.2,y=.8,label="c",size=14,color="gray29")+
-              scale_y_continuous(limits = c(-2.5,1))+
-              theme(legend.position = c(0.8,0.78),
-                    axis.line = element_line(color = "black")),
-            x = 0.08, y = 0, width = 0.4, height = 0.45)+
-  draw_plot(Gplot[[2]], x = 0.12, y = 0.04, width = 0.15, height = 0.175)+
-  draw_plot(rasterGrob(image,x = 0, y = 0),x=.45,y=0.56,width=0.3/mult,height=0.3)
-grid.lines(x=unit(c(0.2,0.36),"npc"),y=unit(c(0.5,0.49),"npc"),gp=gpar(lwd=2,lty="dashed"))
-grid.lines(x=unit(c(0.40,0.42),"npc"),y=unit(c(0.85,0.5),"npc"),gp=gpar(lwd=2,lty="dashed"))
-grid.lines(x=unit(c(0.36,0.25),"npc"),y=unit(c(0.44,0.41),"npc"),gp=gpar(lwd=2,lty="dashed"))
-grid.lines(x=unit(c(0.45,0.48),"npc"),y=unit(c(0.42,0.22),"npc"),gp=gpar(lwd=2,lty="dashed"))
-grid.lines(x=unit(c(0.53,0.55),"npc"),y=unit(c(0.49,0.3),"npc"),gp=gpar(lwd=2,lty="dashed"))
-grid.lines(x=unit(c(0.56,0.65),"npc"),y=unit(c(0.53,0.49),"npc"),gp=gpar(lwd=2,lty="dashed"))
-grid.lines(x=unit(c(0.455,0.46),"npc"),y=unit(c(0.51,0.62),"npc"),gp=gpar(lwd=2,lty="dashed"))
-grid.lines(x=unit(c(0.47,0.5),"npc"),y=unit(c(0.515,0.57),"npc"),gp=gpar(lwd=2,lty="dashed"))
-dev.off()
-
-
-theme_new = theme(axis.text = element_text(size = 11),
-                        axis.title = element_text(size = 13),
-                        legend.text = element_text(size = 11),
-                        legend.title = element_text(size = 13),
-                  legend.key.height = unit(1,"lines"))
-
-
-svg("~/Writing/Figures/NurseLarva/corApproach/allTogether2.svg",height = 8, width = 12,res=300)
+svg("~/GitHub/MonomoriumNurseLarva/Figures/allTogether2.svg",height = 8, width = 12)
 ggdraw()+
   draw_plot(Hplot[[1]]+scale_y_continuous(limits = c(-1.5,1.5))+
               theme_new+
-              theme(legend.position = c(0.65,0.2),
+              theme(legend.position = "none",
                     axis.line = element_line(color = "black"))+
               annotate("text",x = 1.2,y=1.2,label="a",size=12,color="gray29")+
-              ylab("-log2 expression change from initial stage"), x = 0.05, y = 0.55, width = 0.4, height = 0.45)+
-  draw_plot(Hplot[[2]]+scale_y_continuous(limits = c(-2,2)), x = 0.09, y = 0.59, width = 0.15, height = 0.175)+
+              ylab("expression change"), x = 0.05, y = 0.55, width = 0.4, height = 0.45)+
+  draw_plot(Hplot[[2]]+scale_y_continuous(limits = c(-2,2))+
+              theme_small, x = 0.09, y = 0.59, width = 0.15, height = 0.175)+
   draw_plot(Gplot[[1]]+annotate("text",x = 1.2,y=.4,label="b",size=12,color="gray29")+
               scale_y_continuous(limits = c(-2,0.5),labels = c(-2,-1,0),breaks = c(-2,-1,0))+
-              theme_new+
-              theme(legend.position = c(0.8,0.8),
+              theme_new+ ylab("expression change")+
+              theme(legend.position = "none",
                     axis.line = element_line(color = "black")),
             x = 0.55, y = 0.55, width = 0.4, height = 0.45)+
-  draw_plot(Gplot[[2]],  x = 0.59, y = 0.59, width = 0.15, height = 0.175)+
+  draw_plot(Gplot[[2]]+
+              theme_small,  x = 0.59, y = 0.59, width = 0.15, height = 0.175)+
   draw_plot(HLplot[[1]]+annotate("text",x = 1.2,y=1.6,label="c",size=12,color="gray29")+
               scale_y_continuous(limits = c(-2,2))+
-              theme_new+
-              theme(legend.position = c(0.65,0.2),
+              theme_new+ylab("expression change")+
+              theme(legend.position = "none",
                     axis.line = element_line(color = "black")),
             x = 0.05, y = 0, width = 0.4, height = 0.45)+
-  draw_plot(HLplot[[2]]+scale_y_continuous(limits = c(-2,2)), x = 0.09, y = 0.04, width = 0.15, height = 0.175)+
+  draw_plot(HLplot[[2]]+
+              theme_small+scale_y_continuous(limits = c(-2,2)), x = 0.09, y = 0.04, width = 0.15, height = 0.175)+
   draw_plot(GLplot[[1]]+
               annotate("text",x = 1.2,y=.8,label="d",size=12,color="gray29")+
               scale_y_continuous(limits = c(-2.5,1))+
-              theme(legend.position = c(0.8,0.8),
+              theme(legend.position = "none",
                     axis.line = element_line(color = "black"))+
-              theme_new,
+              theme_new+ylab("expression change"),
             x = 0.55, y = 0, width = 0.4, height = 0.45)+
-  draw_plot(GLplot[[2]], x = 0.59, y = 0.04, width = 0.15, height = 0.175)+
+  draw_plot(GLplot[[2]]+
+              theme_small, x = 0.59, y = 0.04, width = 0.15, height = 0.175)+
   draw_plot(rasterGrob(image,x = 0, y = 0),x=.48,y=0.58,width=0.3/mult,height=0.3)
 
 #Head
@@ -539,8 +435,23 @@ nGeneStats <- ldply(lapply(c(nGeneShared_Larv,nGeneShared),function(x){
   return(c(mean(x),quantile(x,0.025),quantile(x,0.975)))
 }))
 colnames(nGeneStats) = c("mean","ci1","ci2")
+
+
+#Table for numbers of genes and number of modules
+nMod <- lapply(c("NurseH","RNurseH","NurseG","RNurseG"),function(x) length(unique(STEMdata[[x]][[1]])))
+nPos <- lapply(res,function(x) length(x[[2]][!is.na(x[[2]])]))
+nNeg <- lapply(res,function(x) length(x[[3]][!is.na(x[[3]])]))
+nGene <- lapply(res,function(x){
+  sum(x[[1]]$tissue== "nurse" & x[[1]]$Module %in% c(x[[2]],81-as.integer(as.character(x[[3]]))) & !is.na(x[[1]]$Module))/5
+})
+
+#Barplot
+d_bar = data.frame(t = c(rep(c("larva \u2192 nurse head","larva \u2192 nurse abdomen"),each=2),rep(c("nurse head \u2192 larva","nurse abdomen \u2192 larva"),each=2)),
+                   N = c(unlist(nGeneL),unlist(nGene)),
+                   type = rep(c(" stage-specific nurse       "," random nurse       "),4))
+
+d_bar$type = factor(d_bar$type, levels = c(" stage-specific nurse       "," random nurse       "))
 d_bar = cbind(d_bar,nGeneStats)
-d_bar$type = factor(d_bar$type, levels = levels(d_bar$type)[c(2,1)])
 
 p <- ggplot(d_bar,aes(x = t,y=mean,fill=type))+
   geom_bar(stat="identity",color="black",position = position_dodge())+
@@ -552,16 +463,14 @@ p <- ggplot(d_bar,aes(x = t,y=mean,fill=type))+
         legend.title = element_blank(),
         plot.margin = unit(c(0.5,1,0.5,1),"cm"),
         axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1,size=15),
-        axis.title.y=element_text(margin=margin(t=0,r=15,b=0,l=0),size=17),
-        axis.title.x=element_text(margin=margin(t=15,r=0,b=0,l=0),size=17),
         axis.line = element_line(color="black"),
         legend.text=element_text(size=15))+
   annotate("text",x = 1,y=9000,label="e",size=14,color="gray29")+
   geom_errorbar(aes(ymin=ci1,ymax=ci2),position=position_dodge(width = 0.9),width = 0.5,size=1)
 
-svg("~/Writing/Figures/NurseLarva/corApproach/NgeneSup_errorbar.svg",height = 10, width = 6)
+svg("~/GitHub/MonomoriumNurseLarva/Figures/NgeneSup_errorbar.svg",height = 8, width = 5)
 p
 dev.off()
-ggsave(p,file="~/Writing/Figures/NurseLarva/corApproach/NgeneSup_errorbar.png",height=10,width=6,dpi=300)
+ggsave(p,file="~/GitHub/MonomoriumNurseLarva/Figures/NgeneSup_errorbar.png",height=8,width=5,dpi=300)
 
 
