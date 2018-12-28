@@ -55,7 +55,7 @@ selectSocial <- function(codeN,gN,gL,boots=100){
   allExpr <<- rbind(expr[[1]],expr[[2]])
   df <- data.frame(run=seq(1,boots,by=1))
   sjob <- slurm_apply(runGenie, df, jobname = 'parGenie',
-                      nodes = 4, cpus_per_node = 5, add_objects=c("allExpr"),submit = TRUE)
+                      nodes = 1, cpus_per_node = 20, add_objects=c("allExpr"),submit = TRUE)
   res <- get_slurm_out(sjob,outtype='raw') #get output as lists
   Averaged <- Reduce("+", res) / length(res)
   geneList <- get.link.list(Averaged)
@@ -64,8 +64,8 @@ selectSocial <- function(codeN,gN,gL,boots=100){
   nurse <- tabGenie(geneList,"nurse")
   larv <- tabGenie(geneList,"larv")
   results <- rbind(nurse,larv)
-  write.csv(Averaged,paste("~/Nurse_Larva/DEC13",codeN,"GenieMat.csv",sep=""))
-  write.csv(results,file=paste("~/Nurse_Larva/DEC13",codeN,"GenieTabConn.csv",sep=""))
+  write.csv(Averaged,paste("~/Nurse_Larva/DEC18",codeN,"GenieMat.csv",sep=""))
+  write.csv(results,file=paste("~/Nurse_Larva/DEC18",codeN,"GenieTabConn.csv",sep=""))
 }
 
 runGenie <- function(run){
@@ -79,7 +79,9 @@ runGenie <- function(run){
   }
 }
 
-fpkm = normalize.quantiles(fpkm)
+#fpkm_norm = as.data.frame(normalize.quantiles(as.matrix(fpkm)))
+#colnames(fpkm_norm) = colnames(fpkm)
+#rownames(fpkm_norm) = rownames(fpkm)
 fpkm = log(fpkm+sqrt(fpkm^2+1))
 selectSocial("CH",keepH,keepL)
 selectSocial("CG",keepG,keepL)

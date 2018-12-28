@@ -57,7 +57,7 @@ makeTbl <- function(tbl,name,font){
   g <- gtable::gtable_add_grob(g, grobs = separators,
                                t = 2, b = nrow(g), l = seq_len(ncol(g)-1)+1)
   p <- grid.arrange(g)
-  ggsave(p,file=paste("~/Writing/Figures/NurseLarva/corApproach/",name,".png",sep=""),width=10,height=4,dpi=300)
+  ggsave(p,file=paste("~/GitHub/MonomoriumNurseLarva/Figures/",name,".png",sep=""),width=10,height=4,dpi=300)
   
 }
 
@@ -187,10 +187,10 @@ nGene <- lapply(res,function(x){
 })
 
 tbl = do.call(cbind,lapply(list(nMod,nPos,nNeg,nGene),unlist))
-colnames(tbl) = c("number of\nsignificantly-enriched profiles","profiles positively\nshared with larvae","profiles negatively\nshared with larvae","number of genes\nin shared profiles")
+colnames(tbl) = c("number of\nsignificantly-enriched modules","modules positively\nshared with larvae","modules negatively\nshared with larvae","number of genes\nin shared modules")
 rownames(tbl) = c("stage-specific nurse head","random nurse head","stage-specific nurse abdomen","random nurse abdomen")
 
-makeTbl(tbl,"STEMtable",8)
+makeTbl(tbl,"STEMtable",10)
 
 #Fisher's exact test
 lNum = length(unique(STEMdata[["WLarv"]][[1]])) - 1
@@ -208,24 +208,6 @@ d_bar = data.frame(t = c(rep(c("larva \u2192 nurse head","larva \u2192 nurse abd
                type = rep(c("stage-specific nurse       ","random nurse       "),4))
 
 d_bart$type = factor(d$type, levels = c("stage-specific nurse       ","random nurse       "))
-
-p <- ggplot(d_bar,aes(x = t,y=N,fill=type))+
-  geom_bar(stat="identity",color="black",position = position_dodge())+
-  scale_fill_manual(values = c("gray59","black"))+
-  apatheme+
-  ylab("number of genes")+
-  xlab("connection type")+
-  theme(legend.position = "top",
-        legend.title = element_blank(),
-        plot.margin = unit(c(0.5,1,0.5,1),"cm"),
-        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1,size=15),
-        axis.title.y=element_text(margin=margin(t=0,r=15,b=0,l=0),size=17),
-        axis.title.x=element_text(margin=margin(t=15,r=0,b=0,l=0),size=17),
-        axis.line = element_line(color="black"),
-        legend.text=element_text(size=15))
-
-ggsave(p,file="~/Writing/Figures/NurseLarva/corApproach/NgeneSup.png",height=10,width=8,dpi=300)
-
 
 #All negative
 Hmods = as.integer(as.character(Hshare[[3]]))
@@ -321,7 +303,7 @@ barH <- barCharts(Hshare,RHshare,"nurse")
 
 Gplot <- sharedPlot(Gmod,"nurse",Gshare[[1]],pal1)
 GLplot <- sharedPlot(Gmod,"larva",Gshare[[1]],pal1)
-Hplot <- sharedPlot(Hmod,"nurse",Hshare[[1]],pal2,flip = TRUE)
+Hplot <- sharedPlot(Hmod,"nurse",Hshare[[1]],pal2)
 HLplot <- sharedPlot(lMod,"larva",Hshare[[1]],pal2)
 
 vp <- viewport(width = 0.3, height = 0.3, x = 0.25, y = 0.25)
@@ -346,10 +328,10 @@ ggdraw()+
               theme_new+
               theme(legend.position = "none",
                     axis.line = element_line(color = "black"))+
-              annotate("text",x = 1.2,y=1.2,label="a",size=12,color="gray29")+
+              annotate("text",x = 1.2,y=-1.2,label="a",size=12,color="gray29")+
               ylab("expression change"), x = 0.05, y = 0.55, width = 0.4, height = 0.45)+
   draw_plot(Hplot[[2]]+scale_y_continuous(limits = c(-2,2))+
-              theme_small, x = 0.09, y = 0.59, width = 0.15, height = 0.175)+
+              theme_small, x = 0.09, y = 0.8, width = 0.15, height = 0.175)+
   draw_plot(Gplot[[1]]+annotate("text",x = 1.2,y=.4,label="b",size=12,color="gray29")+
               scale_y_continuous(limits = c(-2,0.5),labels = c(-2,-1,0),breaks = c(-2,-1,0))+
               theme_new+ ylab("expression change")+
@@ -378,7 +360,7 @@ ggdraw()+
   draw_plot(rasterGrob(image,x = 0, y = 0),x=.48,y=0.58,width=0.3/mult,height=0.3)
 
 #Head
-grid.lines(x=unit(c(0.35,0.47),"npc"),y=unit(c(0.56,0.52),"npc"),gp=gpar(lwd=2.5,lty="dotted"))
+grid.lines(x=unit(c(0.35,0.47),"npc"),y=unit(c(0.55,0.52),"npc"),gp=gpar(lwd=2.5,lty="dotted"))
 grid.lines(x=unit(c(0.44,0.49),"npc"),y=unit(c(0.85,0.54),"npc"),gp=gpar(lwd=2.5,lty="dotted"))
 
 #Abdomen
@@ -393,6 +375,19 @@ grid.lines(x=unit(c(0.43,0.413),"npc"),y=unit(c(0.45,0.25),"npc"),gp=gpar(lwd=2.
 grid.lines(x=unit(c(0.49,0.6),"npc"),y=unit(c(0.46,0.455),"npc"),gp=gpar(lwd=2.5,lty="dotted"))
 grid.lines(x=unit(c(0.47,0.55),"npc"),y=unit(c(0.445,0.25),"npc"),gp=gpar(lwd=2.5,lty="dotted"))
 
+dev.off()
+
+
+png("~/GitHub/MonomoriumNurseLarva/Figures/HeadSTEM.png",height = 3000,width=4000,res =300)
+ggdraw()+
+  draw_plot(Hplot[[1]]+scale_y_continuous(limits = c(-1.5,1.5))+
+              theme_new+
+              theme(legend.position = "none",
+                    axis.line = element_line(color = "black"))+
+              annotate("text",x = 1.2,y=1.2,label="a",size=12,color="gray29")+
+              ylab("expression change"), x = 0.05, y = 0.55, width = 0.4, height = 0.45)+
+  draw_plot(Hplot[[2]]+scale_y_continuous(limits = c(-2,2))+
+              theme_small, x = 0.09, y = 0.59, width = 0.15, height = 0.175)+
 dev.off()
 
 #######
@@ -457,7 +452,7 @@ p <- ggplot(d_bar,aes(x = t,y=mean,fill=type))+
   geom_bar(stat="identity",color="black",position = position_dodge())+
   scale_fill_manual(values = c("gray70","gray45"))+
   apatheme+
-  ylab("number of genes")+
+  ylab("number of genes in shared modules")+
   xlab("connection type")+
   theme(legend.position = "top",
         legend.title = element_blank(),

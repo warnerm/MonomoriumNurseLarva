@@ -59,7 +59,7 @@ colnames(f.est) = c("Gene","f")
 ext <- read.csv("~/Downloads/msx123_Supp (1)/MpharAnn.csv") #load in MBE results
 
 makePlot <- function(nurse){
-  df <- read.csv(paste("FEB26/JAN23",nurse,"GenieTabConn.csv",sep=""))
+  df <- read.csv(paste("~/Data/Nurse_Larva/FEB26/JAN23",nurse,"GenieTabConn.csv",sep=""))
   df$tissue = gsub("_.*","",df$Gene)
   df$Gene = gsub(".*_","",df$Gene)
   df$code = nurse
@@ -73,6 +73,26 @@ plotsG <- lapply(codes,makePlot)
 allD <- ldply(plotsG,data.frame)
 
 allDf <- merge(allD,f.est,by = "Gene",all.x = TRUE)
+
+mD <- melt(allDf,id.vars=c("Gene","tissue","code","f"))
+
+mD$tissue_code = as.factor(apply(mD[,c(2,3)],1,paste,collapse="_"))
+
+cT <- lapply(levels(mD$tissue_code),function(x){
+  lapply(levels(mD$variable),function(y){
+    
+    #print(x);print(y)
+    cor.test(1-mD$f[mD$tissue_code==x&mD$variable==y],mD$value[mD$tissue_code==x&mD$variable==y],method="spearman")
+  })
+})
+
+
+ggplot(mD,aes(x=value,y=f,color=variable))+
+  geom_point()+
+  geom_smooth(se=F)+
+  facet_grid(. ~ tissue_code)
+
+
 allDf$reg_diff = allDf$reg_between - allDf$reg_within
 allDf$targ_diff = allDf$targ_between - allDf$targ_within
 allDf$tissueC = "larva \u2192 nurse head"
@@ -666,7 +686,7 @@ levels(e$stage) = c("L1","L2","L3","L4","L5")
 p <- ggplot(e,aes(x=stage,y=expression,color=sample))+
   geom_point()+
   ylim(1,3.5)+
-  geom_smooth(aes(group=sample,fill=sample),color="black")+
+  geom_smooth(aes(group=sample,fill=sample),color="black",se=FALSE)+
   xlab("larval developmental stage")+
   scale_color_manual(values = tissue_palette[c(1,3)])+
   scale_fill_manual(values = tissue_palette[c(1,3)])+
@@ -685,7 +705,7 @@ ggsave(p,file="~/GitHub/MonomoriumNurseLarva/Figures/gl_egfr.png",height=6,width
 p <- ggplot(e[grepl("nurse",e$sample),],aes(x=stage,y=expression,color=sample))+
   geom_point()+
   ylim(1,3.5)+
-  geom_smooth(aes(group=sample,fill=sample),color="black")+
+  geom_smooth(aes(group=sample,fill=sample),color="black",se=FALSE)+
   xlab("larval developmental stage")+
   scale_color_manual(values = tissue_palette[c(3)])+
   scale_fill_manual(values = tissue_palette[c(3)])+
@@ -700,17 +720,22 @@ p <- ggplot(e[grepl("nurse",e$sample),],aes(x=stage,y=expression,color=sample))+
 ggsave(p,file="~/GitHub/MonomoriumNurseLarva/Figures/gl_egfr_justnurse.png",height=6,width=6.5,dpi=600)
 
 ##With sexual larvae
-fCH = factors[grepl("XH",rownames(factors)),]
+fCH = factors[grepl("CH",rownames(factors)),]
 eCH = log(fpkm["LOC105830675",colnames(fpkm) %in% rownames(fCH)])
-fLW = factors[grepl("LS",rownames(factors)),]
+fLW = factors[grepl("1LW|LS",rownames(factors)),]
 eLW = log(fpkm["LOC105837907",colnames(fpkm) %in% rownames(fLW)])
+fLW2 = factors[grepl("LS",rownames(factors)),]
+eLW2 = log(fpkm["LOC105837907",colnames(fpkm) %in% rownames(fLW2)])
 
 expr = data.frame(gL = t(eCH),stage = fCH$stage)
 expr2 = data.frame(gL = t(eLW),stage = fLW$stage)
-colnames(expr)[1] = colnames(expr2)[1] = "expression"
+expr3 = data.frame(gL = t(eLW2),stage = fLW2$stage)
+colnames(expr)[1] = colnames(expr2)[1] = colnames(expr3)[1] = "expression"
 expr$sample = "giant-lens  (nurse head)"
 expr2$sample = "eps8  (larva)"
+expr3$sample = "eps8 (repr. larva)"
 e = rbind(expr,expr2)
+e2 = rbind(e,expr3)
 #e$stage = as.numeric(as.character(e$stage))
 levels(e$stage) = c("L1","L2","L3","L4","L5")
 
@@ -718,19 +743,142 @@ p <- ggplot(e,aes(x=stage,y=expression,color=sample))+
   geom_point()+
   geom_smooth(aes(group=sample,fill=sample),color="black")+
   xlab("larval developmental stage")+
-  scale_color_manual(values = tissue_palette[c(1,3)])+
-  scale_fill_manual(values = tissue_palette[c(1,3)])+
+  scale_color_manual(values = tissue_palette[c(1,3,4)])+
+  scale_fill_manual(values = tissue_palette[c(1,3,4)])+
   theme(legend.position = "none",
         panel.background = element_blank(),
         axis.line.x = element_line(color='black'),
         axis.line.y = element_line(color='black'),
         axis.title = element_text(size = 20, face = "bold"),
         axis.text = element_text(size = 15))+
-  annotate("text",x=3.1,y=3.2,label=parse(text=paste0("italic('eps8')~(sex_larva)")),size=6)+
-  annotate("text",x=3.3,y=1.2,label=parse(text=paste0("italic('giant-lens')~(sex_nurse)")),size=6)
+  annotate("text",x=4.1,y=3.3,label=parse(text=paste0("italic('eps8')~('reproductive larva')")),size=6)+
+  annotate("text",x=4.3,y=1.2,label=parse(text=paste0("italic('giant-lens')~(nurse)")),size=6)
 
 ggsave(p,file="~/GitHub/MonomoriumNurseLarva/Figures/gl_egfr_sex.png",height=6,width=6.5,dpi=600)
 
+theme_black = function(base_size = 12, base_family = "") {
+  
+  theme_grey(base_size = base_size, base_family = base_family) %+replace%
+    
+    theme(
+      # Specify axis options
+      axis.line = element_blank(),  
+      axis.text.x = element_text(size = base_size*0.8, color = "white", lineheight = 0.9),  
+      axis.text.y = element_text(size = base_size*0.8, color = "white", lineheight = 0.9),  
+      axis.ticks = element_line(color = "white", size  =  0.2),  
+      axis.title.x = element_text(size = base_size, color = "white", margin = margin(0, 10, 0, 0)),  
+      axis.title.y = element_text(size = base_size, color = "white", angle = 90, margin = margin(0, 10, 0, 0)),  
+      axis.ticks.length = unit(0.3, "lines"),   
+      # Specify legend options
+      legend.background = element_rect(color = NA, fill = "black"),  
+      legend.key = element_rect(color = "white",  fill = "black"),  
+      legend.key.size = unit(1.2, "lines"),  
+      legend.key.height = NULL,  
+      legend.key.width = NULL,      
+      legend.text = element_text(size = base_size*0.8, color = "white"),  
+      legend.title = element_text(size = base_size*0.8, face = "bold", hjust = 0, color = "white"),  
+      legend.position = "right",  
+      legend.text.align = NULL,  
+      legend.title.align = NULL,  
+      legend.direction = "vertical",  
+      legend.box = NULL, 
+      # Specify panel options
+      panel.background = element_rect(fill = "black", color  =  NA),  
+      panel.border = element_rect(fill = NA, color = "white"),  
+      panel.grid.major = element_line(color = "grey35"),  
+      panel.grid.minor = element_line(color = "grey20"),  
+      panel.margin = unit(0.5, "lines"),   
+      # Specify facetting options
+      strip.background = element_rect(fill = "grey30", color = "grey10"),  
+      strip.text.x = element_text(size = base_size*0.8, color = "white"),  
+      strip.text.y = element_text(size = base_size*0.8, color = "white",angle = -90),  
+      # Specify plot options
+      plot.background = element_rect(color = "black", fill = "black"),  
+      plot.title = element_text(size = base_size*1.2, color = "white"),  
+      plot.margin = unit(rep(1, 4), "lines")
+      
+    )
+  
+}
+
+pal = c('royalblue1','#FF3030')
+
+p <- ggplot(e,aes(x=stage,y=expression,color=sample,fill=sample))+
+  geom_point(size=2.5)+
+  apatheme+
+  ylim(1,3.5)+
+  geom_smooth(aes(group=sample,fill=sample),color="white")+
+  xlab("larval developmental stage")+
+  scale_color_manual(values = pal)+
+  scale_fill_manual(values = pal)+
+  theme(legend.position = "none",
+        panel.border = element_rect(fill = NA, color = "white"),  
+        axis.ticks = element_line(color='white'),
+        panel.background = element_rect(fill = "black", color  =  NA),  
+        axis.title = element_text(size = 25, face = "bold",color='white'),
+        axis.text = element_text(size = 20,color='white'),
+        plot.background = element_rect(color = "black", fill = "black"))+
+  annotate("text",x=4.5,y=3.2,label=parse(text=paste0("italic('eps8')~(larva)")),size=8,color='white')+
+  annotate("text",x=4.5,y=1.2,label=parse(text=paste0("italic('giant-lens')~(nurse)")),size=8,color='white')
+
+ggsave(p,file="~/GitHub/MonomoriumNurseLarva/Figures/F4b.png",height=6,width=7,dpi=600)
 
 
+pal = c('royalblue1','#FF3030')
 
+p <- ggplot(e[grepl("nurse",e$sample),],aes(x=stage,y=expression,color=sample,fill=sample))+
+  geom_point(size=2.5)+
+  apatheme+
+  ylim(1,3.5)+
+  geom_smooth(aes(group=sample,fill=sample),color="white")+
+  xlab("larval developmental stage")+
+  scale_color_manual(values = pal[2])+
+  scale_fill_manual(values = pal[2])+
+  theme(legend.position = "none",
+        panel.border = element_rect(fill = NA, color = "white"),  
+        axis.ticks = element_line(color='white'),
+        panel.background = element_rect(fill = "black", color  =  NA),  
+        axis.title = element_text(size = 25, face = "bold",color='white'),
+        axis.text = element_text(size = 20,color='white'),
+        plot.background = element_rect(color = "black", fill = "black"))+
+  annotate("text",x=4.5,y=1.2,label=parse(text=paste0("italic('giant-lens')~(nurse)")),size=8,color='white')
+
+ggsave(p,file="~/GitHub/MonomoriumNurseLarva/Figures/F4b2.png",height=6,width=7,dpi=600)
+
+a = merge(antSB,allDf,by="Gene")
+ggplot(a,aes(x=reg_between,y=cb,color=tissueC))+
+  geom_point()+
+  geom_smooth()
+
+aN = a[a$tissue=="nurse" & a$code=="CH",]
+cor.test(aN$reg_between,aN$cb,method="spearman")
+
+jelly = as.character(ann$gene[grepl("jelly",ann$DescriptionSP)])
+aN = allDf[allDf$tissue=="nurse",]
+aN$rRank = rank(aN$reg_between)
+e = aN[aN$Gene %in% a$gene,]
+e2 = allDf[allDf$Gene %in% a$gene,]
+
+a = ann[grepl("growth factor",ann$DescriptionSP),c("gene","DescriptionSP")]
+egfr_genes2 <- c("LOC105828088","LOC105830494","LOC105834310",
+                "LOC105837907","LOC105838568","LOC105832621",
+                "LOC105838372","LOC105829781")
+
+gl <- "LOC105830675"
+spitz <- "LOC105833934"
+
+go <- read.table("~/GitHub/devnetwork/data/dmel_ann.txt",sep="\t",header = FALSE,stringsAsFactors = FALSE)
+load("~/GitHub/devnetwork/results/collectedPhylo.RData")
+g = go[go$V2=="GO:0007173",]
+egfr_genes <- as.character(ENDogg$gene_Mphar[ENDogg$gene_Dmel %in% g$V1])
+a = ann[ann$gene %in% egfr_genes,c("gene","DescriptionSP")]
+
+netF = fpkm[rownames(fpkm) %in% unique(c(egfr_genes,egfr_genes2,gl,spitz,jelly)),grepl("W_L|CH",colnames(fpkm))]
+netL = netF[,grepl("W_L",colnames(netF))]
+netN = netF[,grepl("CH",colnames(netF))]
+rownames(netL) = paste("Larv_",rownames(netL),sep="")
+rownames(netN) = paste("Nurse_",rownames(netN),sep="")
+genIn = rbind(netL,netN)
+
+
+a = ann[ann$gene %in% rownames(netF),c("gene","DescriptionSP")]
