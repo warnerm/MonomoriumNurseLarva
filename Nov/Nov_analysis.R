@@ -54,12 +54,18 @@ apatheme_f3=theme_bw()+
 PS_palette = c("#deebf7","#9ecae1","#4292c6","#2171b5","#084594","darkblue","black")
 tissue_palette = c("cornflowerblue","royalblue4","firebrick1","firebrick4")
 
-f.est <- read.csv("~/Data/Nurse_Larva/MKtestConstraintOneAlpha.csv")
-colnames(f.est) = c("Gene","f")
+
+#Constraint
+mp <- read.csv("~/GitHub/popgenAM/results/Mphar.substitutions.csv")
+mp1 = mp[mp$FN > 0 & mp$FS > 0 & mp$PS > 0,]
+mC <- read.table("~/GitHub/popgenAM/results/MKtest_globalAlpha_locusF_Mphar")
+mp1 = cbind(mp1,f=as.numeric(as.character((t(mC[2,4:(ncol(mC) - 1)])))))
+f.est = mp1[,c(1,9)]
+
 ext <- read.csv("~/Downloads/msx123_Supp (1)/MpharAnn.csv") #load in MBE results
 
 makePlot <- function(nurse){
-  df <- read.csv(paste("~/Data/Nurse_Larva/FEB26/JAN23",nurse,"GenieTabConn.csv",sep=""))
+  df <- read.csv(paste("~/GitHub/MonomoriumNurseLarva/results/DEC16",nurse,"GenieTabConn.csv",sep=""))
   df$tissue = gsub("_.*","",df$Gene)
   df$Gene = gsub(".*_","",df$Gene)
   df$code = nurse
@@ -87,12 +93,6 @@ cT <- lapply(levels(mD$tissue_code),function(x){
 })
 
 
-ggplot(mD,aes(x=value,y=f,color=variable))+
-  geom_point()+
-  geom_smooth(se=F)+
-  facet_grid(. ~ tissue_code)
-
-
 allDf$reg_diff = allDf$reg_between - allDf$reg_within
 allDf$targ_diff = allDf$targ_between - allDf$targ_within
 allDf$tissueC = "larva \u2192 nurse head"
@@ -115,13 +115,8 @@ f2d <- ggplot(allDf, aes(x = reg_within/max(allDf$reg_within), y = reg_between/m
         axis.text = element_text(size = 15),
         legend.background = element_blank())
 
-ggsave(f2d,file="~/GitHub/MonomoriumNurseLarva/Figures/Fig3.png",height=6,width=6.5,dpi=300)
+ggsave(f2d,file="~/GitHub/MonomoriumNurseLarva/Figures/FigS4.png",height=6,width=6.5,dpi=300)
 
-
-png("~/Writing/Figures/NurseLarva/corApproach/figS2.png",height = 2000,width = 3000,res =300)
-grid.arrange(f2b+ylim(0,1)+annotate("text",x=3.5,y=0.95,label='bold("a")',parse=TRUE,size=9,color="gray29"),
-             f2c+ylim(0,0.4)+annotate("text",x=3.5,y=0.95*0.4,label='bold("b")',parse=TRUE,size=9,color="gray29"),ncol = 2)
-dev.off()
 
 ##Statistics for regulatory network topology
 wilcox.test(allDf$reg_within[allDf$tissue=="larv"],allDf$reg_within[allDf$tissue=="nurse"],alternative = "greater")
@@ -132,10 +127,19 @@ wilcox.test(allDf$reg_within[allDf$tissue=="larv" & allDf$code == "CG"],allDf$re
 wilcox.test(allDf$reg_within[allDf$tissue=="nurse" & allDf$code == "CH"],allDf$reg_between[allDf$tissue=="nurse" & allDf$code == "CH"],alternative = "greater")
 wilcox.test(allDf$reg_within[allDf$tissue=="nurse" & allDf$code == "CG"],allDf$reg_between[allDf$tissue=="nurse" & allDf$code == "CG"],alternative = "greater")
 
-cor.test(allDf$reg_within[allDf$tissue=="larv" & allDf$code == "CH"],allDf$reg_between[allDf$tissue=="larv" & allDf$code == "CH"],method = "pearson")
-cor.test(allDf$reg_within[allDf$tissue=="larv" & allDf$code == "CG"],allDf$reg_between[allDf$tissue=="larv" & allDf$code == "CG"],method = "pearson")
-cor.test(allDf$reg_within[allDf$tissue=="nurse" & allDf$code == "CH"],allDf$reg_between[allDf$tissue=="nurse" & allDf$code == "CH"],method = "pearson")
-cor.test(allDf$reg_within[allDf$tissue=="nurse" & allDf$code == "CG"],allDf$reg_between[allDf$tissue=="nurse" & allDf$code == "CG"],method = "pearson")
+allDf$SI = allDf$reg_between-allDf$reg_within
+cor.test(allDf$reg_within[allDf$tissue=="larv" & allDf$code == "CH"],allDf$reg_between[allDf$tissue=="larv" & allDf$code == "CH"],method = "spearman")
+cor.test(allDf$reg_within[allDf$tissue=="larv" & allDf$code == "CG"],allDf$reg_between[allDf$tissue=="larv" & allDf$code == "CG"],method = "spearman")
+cor.test(allDf$reg_within[allDf$tissue=="nurse" & allDf$code == "CH"],allDf$reg_between[allDf$tissue=="nurse" & allDf$code == "CH"],method = "spearman")
+cor.test(allDf$reg_within[allDf$tissue=="nurse" & allDf$code == "CG"],allDf$reg_between[allDf$tissue=="nurse" & allDf$code == "CG"],method = "spearman")
+cor.test(1-allDf$f[allDf$tissue=="nurse" & allDf$code == "CH"],allDf$reg_within[allDf$tissue=="nurse" & allDf$code == "CH"],method = "spearman")
+cor.test(1-allDf$f[allDf$tissue=="nurse" & allDf$code == "CH"],allDf$reg_between[allDf$tissue=="nurse" & allDf$code == "CH"],method = "spearman")
+cor.test(1-allDf$f[allDf$tissue=="nurse" & allDf$code == "CH"],allDf$SI[allDf$tissue=="nurse" & allDf$code == "CH"],method = "spearman")
+cor.test(1-allDf$f[allDf$tissue=="nurse" & allDf$code == "CG"],allDf$reg_within[allDf$tissue=="nurse" & allDf$code == "CG"],method = "spearman")
+cor.test(1-allDf$f[allDf$tissue=="nurse" & allDf$code == "CG"],allDf$reg_between[allDf$tissue=="nurse" & allDf$code == "CG"],method = "spearman")
+cor.test(1-allDf$f[allDf$tissue=="nurse" & allDf$code == "CG"],allDf$SI[allDf$tissue=="nurse" & allDf$code == "CG"],method = "spearman")
+
+
 
 
 allDN = droplevels(allDf[allDf$tissue!="larv",])
@@ -159,7 +163,7 @@ f3a <- ggplot(allDN,aes( x = reg_within/max(allDN$reg_within), y = 1 - f, color 
         legend.margin = margin(c(0,0,0,0)),
         axis.line = element_line(color = "black"))+
   scale_color_manual(values = nurse_pallete)+
-  annotate("text",x = 1,y=0.25,label='bold("a")',parse=TRUE,size=8,color="gray29")+
+  annotate("text",x = .98,y=0.25,label='bold("A")',parse=TRUE,size=8,color="gray29")+
   guides(shape = guide_legend(override.aes = list(size=3)))
 
 f3b <- ggplot(allDN,aes( x = reg_between/max(allDN$reg_between), y = 1 - f, color = tissueC))+
@@ -174,11 +178,12 @@ f3b <- ggplot(allDN,aes( x = reg_between/max(allDN$reg_between), y = 1 - f, colo
         axis.title = element_text(size = 14),
         axis.line = element_line(color = "black"))+
   scale_color_manual(values = nurse_pallete)+
-  annotate("text",x = 1,y=0.25,label='bold("b")',parse=TRUE,size=8,color="gray29")
+  annotate("text",x = .98,y=0.25,label='bold("B")',parse=TRUE,size=8,color="gray29")
 
 f3c <- ggplot(allDN,aes( x = SI, y = 1-f, color = tissueC))+
   geom_point(alpha = 0.5)+
   apatheme+
+  ylim(0,1)+
   ylab("constraint")+
   geom_smooth(method = "lm",se=FALSE)+
   xlab("sociality index")+
@@ -188,7 +193,7 @@ f3c <- ggplot(allDN,aes( x = SI, y = 1-f, color = tissueC))+
         axis.title = element_text(size = 14),
         axis.line = element_line(color = "black"))+
   scale_color_manual(values = nurse_pallete)+
-  annotate("text",x = 0.25,y=0.25,label='bold("c")',parse=TRUE,size=8,color="gray29")
+  annotate("text",x = 0.23,y=0.25,label='bold("C")',parse=TRUE,size=8,color="gray29")
 
 
 grid_arrange_shared_legend <- function(..., ncol = length(list(...)), nrow = 1, position = c("bottom", "right","top")) {
@@ -202,7 +207,7 @@ grid_arrange_shared_legend <- function(..., ncol = length(list(...)), nrow = 1, 
   gl <- lapply(plots, function(x) x + theme(legend.position="none",
                                             axis.line.x = element_line(color='black'),
                                             axis.line.y = element_line(color='black'),
-                                            plot.margin = unit(c(0.5,0.5,0.5,0.5),"cm")))
+                                            plot.margin = unit(c(0.5,0.55,0.5,0.5),"cm")))
   gl <- c(gl, ncol = ncol, nrow = nrow)
   
   combined <- switch(position,
@@ -283,16 +288,16 @@ f4b <- ggplot(fM,aes(x=SI,y=f))+
         axis.title.y = element_text(margin = margin(t = 0,r=12,b=0,l=0)),
         axis.title.x = element_text(margin = margin(t = 12, r = 0, b = 20, l = 0)))+
   xlab("sociality index")+
-  annotate("text",x = -0.31, y = 0.78, label = 'italic("ant (26)")',parse=TRUE,size = 4,angle = 45)+
-  annotate("text",x = -0.355, y = 0.81, label = 'italic("hymenopteran (59)")',parse=TRUE,size = 4,angle = 45)+
-  annotate("text",x = -0.31, y = 0.885, label = 'italic("insect (246)")',parse=TRUE,size = 4,angle = 45)+
-  annotate("text",x = -0.4, y = 0.88, label = 'italic("ancient (1029)")',parse=TRUE,size = 4,angle=45)
+  annotate("text",x = -0.3, y = 0.58, label = 'italic("ant (26)")',parse=TRUE,size = 4,angle = 45)+
+  annotate("text",x = -0.37, y = 0.61, label = 'italic("hymenopteran (59)")',parse=TRUE,size = 4,angle = 45)+
+  annotate("text",x = -0.315, y = 0.8, label = 'italic("insect (246)")',parse=TRUE,size = 4,angle = 45)+
+  annotate("text",x = -0.4, y = 0.82, label = 'italic("ancient (1029)")',parse=TRUE,size = 4,angle=45)
 
-png("~/GitHub/MonomoriumNurseLarva/Figures/fig4.png",height = 1800,width = 2600,res =300)
+png("~/GitHub/MonomoriumNurseLarva/Figures/Fig4.png",height = 1800,width = 2600,res =300)
 grid.arrange(grid_arrange_shared_legend(f3a,f3b,f3c,ncol=1,nrow=3,position = "top"),
              f4b+theme(plot.margin = unit(c(0.5,0.5,0.5,0.9),"cm"),
                        axis.line = element_line(color = "black"))+
-               annotate("text",x = -0.25, y = 0.76, label = 'bold("d")',parse = TRUE,size = 8,color="gray29"),
+               annotate("text",x = -0.425, y = 0.5, label = 'bold("D")',parse = TRUE,size = 8,color="gray29"),
              nrow=1,widths = c(0.35,0.65))
 grid.text("more social",x = 0.62, y = 0.04, gp = gpar(fontface="italic",fontsize=18,col="red"))
 grid.lines(arrow = arrow(angle = 30, length = unit(0.2, "inches"),
@@ -325,12 +330,6 @@ drop1(lm,.~.,test="Chi")
 lm <- glm(1-f ~ reg_between, data = allP[allP$code=="CH",])
 drop1(lm,.~.,test="Chi") 
 
-lm <- glm(BSnIPRE.est ~ reg_within + reg_between, data = allP[allP$code=="CH",])
-drop1(lm,.~.,test="Chi") 
-
-lm <- glm(BSnIPRE.est ~ reg_within + reg_between, data = allP[allP$code=="CG",])
-drop1(lm,.~.,test="Chi") 
-
 lm <- glm(SI ~ PS4, data = pm)
 drop1(lm,.~.,test="Chi") 
 
@@ -346,44 +345,6 @@ wilcox.test(pm$f[pm$psCat=="young"],pm$f[pm$psCat=="old"],alternative="greater")
 lm <- glm(1-f ~ PS4 + SI, data = pm)
 drop1(lm,.~.,test="Chi") 
 
-pirate <- function(ps,column,tissueSub = NULL){
-  if (!is.null(tissueSub)){
-    allP = allP[allP$code==tissueSub,]
-  }
-  d = droplevels(allP[,c(ps,column,"code")])
-  colnames(d)=c("phylostrata","stat","tissue")
-  d$tissue = as.factor(d$tissue)
-  levels(d$tissue) = c("abdomen","head")
-  #Bootstrap for confidence intervals
-  sum = ldply(lapply(levels(d$phylostrata),function(x) bootCI(d$stat[d$phylostrata==x],1000)))
-  sum$ps = levels(d$phylostrata)
-  p1 <- ggplot(data = sum, aes(x = ps, y = mean))+
-    geom_violin(data = d,aes(x = phylostrata, y = stat))+
-    geom_jitter(data = d, aes(x = phylostrata, y = stat,color=tissue), shape = 1, width = .1)+
-    geom_point(size = 3)+
-    geom_errorbar(aes(ymax = c2, ymin = c1))+
-    apatheme+
-    scale_color_manual(values = c("firebrick","dodgerblue1"))+
-    ggtitle(column)+
-    xlab("")+
-    theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
-          legend.title = element_blank(),
-          legend.text = element_text(size=13))+
-    guides(color = guide_legend(override.aes = list(size=3)))
-  return(p1)
-}
-
-p1 <- pirate("PS4","reg_within")+ggtitle("")+ylab("within-tissue regulatory strength")+
-  annotate("text",x = 6.5, y = 1.25, label = 'bold("a")',parse = TRUE,color="gray29",size=9)
-p2 <- pirate("PS4","reg_between")+ggtitle("")+ylab("social regulatory strength")+
-  annotate("text",x = 6.5, y = 0.45, label = 'bold("b")',parse = TRUE,color="gray29",size=9)
-p3 <- pirate("PS4","reg_diff")+ggtitle("")+ylab("sociality index")+
-  annotate("text",x = 6.5, y = 0.2, label = 'bold("c")',parse = TRUE,color="gray29",size=9)
-
-png("~/Writing/Figures/NurseLarva/corApproach/pirates.png",height = 4000,width = 1500,res=300)
-grid.arrange(grid_arrange_shared_legend(p1,p2,p3,ncol=1,nrow=3,position = "top"),
-             bottom = textGrob("phylostrata\n",gp=gpar(fontsize=18,fontface="bold")))
-dev.off()
 
 ########
 ##Top genes
@@ -392,7 +353,7 @@ all = merge(allDf,ext,by="Gene")
 all = all[all$SwissProt!="-",]
 lT = all[all$tissue=="larv",]
 lTb = lT[order(lT$reg_between,decreasing=TRUE),c("Gene","tissueC","SwissProt")]
-lTs = lT[order(lT$reg_diff,decreasing=TRUE),c("Gene","tissueC","SwissProt")]
+lTs = lT[order(lT$targ_between,decreasing=TRUE),c("Gene","tissueC","SwissProt")]
 
 nT = all[all$tissue=="nurse",]
 nTb = nT[order(nT$reg_between,decreasing=TRUE),c("Gene","tissueC","SwissProt")]
@@ -431,124 +392,15 @@ makeTbl <- function(tbl,name,font){
   g <- gtable::gtable_add_grob(g, grobs = separators2,
                                t = seq_len(nrow(g) - 2) + 1, l = 1, r = ncol(g))
   p <- grid.arrange(g)
-  ggsave(p,file=paste("~/Writing/Figures/NurseLarva/corApproach/",name,".png",sep=""),width=8,height=8,dpi=300)
+  ggsave(p,file=paste("~/GitHub/MonomoriumNurseLarva/Figures/",name,".png",sep=""),width=8,height=8,dpi=300)
   
 }
 
 makeTbl(nTb[1:20,],"nurseTopB",9)
 makeTbl(nTs[1:20,],"nurseTopS",9)
 makeTbl(lTb[1:20,],"larvTopB",9)
-makeTbl(lTs[1:20,],"larvTopS",9)
+makeTbl(lTs[1:30,],"larvTopS",9)
 
-
-
-
-
-load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
-tissueExpr <- function(code){
-  f = fpkm[,grepl(code,colnames(fpkm))]
-  meanF = rowSums(f)/ncol(f)
-  geomMeanF = apply(f,1,function(x) exp(mean(log(x))))
-  d = data.frame(Gene = rownames(f),mean = meanF,geom_mean = geomMeanF)
-  d$code = code
-  return(d)
-}
-
-headExpr <- tissueExpr("CH")
-abdExpr <- tissueExpr("CG")
-QH <- tissueExpr("QH")
-QG <- tissueExpr("QG")
-QH$code = "CH"
-QG$code = "CG"
-
-expr <- rbind(QH,QG)
-
-
-allPe = merge(allP,expr,by = c("Gene","code"))
-
-allPeH = allPe[allPe$code=="CH",]
-allPeG = allPe[allPe$code=="CG",]
-cor.test(allPeH$reg_within,allPeH$geom_mean,method = "pearson")
-cor.test(allPeH$reg_between,allPeH$geom_mean,method = "pearson")
-cor.test(allPeH$reg_diff,allPeH$geom_mean,method = "pearson")
-cor.test(allPeG$reg_within,allPeG$geom_mean,method = "pearson")
-cor.test(allPeG$reg_between,allPeG$geom_mean,method = "pearson")
-cor.test(allPeG$reg_diff,allPeG$geom_mean,method = "pearson")
-
-lm <- glm(1-log(f) ~ reg_between + reg_within + PS2 + geom_mean,data = allPeH)
-av <- aov(lm)
-summary(av)
-
-lm <- glm(BSnIPRE.est ~ reg_within + reg_between + geom_mean + PS2, data = allPeG)
-drop1(lm,.~.,test="Chi") 
-
-ggplot(allPe,aes (x = code, y = mean+1, fill = PS2))+
-  geom_boxplot(notch = TRUE)+scale_y_log10()
-
-png("~/Writing/Figures/NurseLarva/corApproach/exprRegulation.png",height = 4000,width = 4000,res =300)
-ggplot(allPe[allPe$code=="CH",],aes (x = geom_mean+1, y = reg_within, color = PS2))+
-  geom_point()+scale_x_log10()+geom_smooth(method = "lm",se=FALSE,size=3)+
-  ylab("within-tissue reg strength")+
-  xlab("geometric mean expression")+theme_bw()+theme_all+
-  scale_color_manual(values = PS_palette)
-dev.off()
-
-ggplot(allPe[allPe$code=="CG",],aes (x = geom_mean+1, y = reg_within, color = PS2))+
-  geom_point()+scale_x_log10()+geom_smooth(method = "lm",se=FALSE)
-
-
-ggplot(allPe[allPe$code=="CH",],aes (x = geom_mean+1, y = log(f), color = PS2))+
-  geom_point()+scale_x_log10()+geom_smooth(method = "lm",se=FALSE)
-
-lm <- glm(reg_between ~ geom_mean*PS2,data = allPe[allPe$code=="CG",])
-av <- aov(lm)
-summary(av)
-TukeyHSD(av,"PS2")
-
-#######
-##Adding in protein evolution
-#######
-prot <- read.csv("~/Data/Nurse_Larva/collectedPAML.csv",sep = "\t",head = F)[,c(1:6)]
-colnames(prot) = c('Amel','Sinv','Nvit','amelRate','sinv','S_N')
-
-map <- read.table("~/Data/Nurse_Larva/map")
-colnames(map) = c("gene_Amel","Amel")
-prot = merge(prot,map,by="Amel")
-
-ogg2 <- read.csv("~/GitHub/devnetwork/data/HymOGG_hym.csv",sep=" ")
-t = table(ogg2$OGG)
-t = t[t==1]
-ogg11 = ogg2[ogg2$OGG %in% names(t),] #get 1-1 orthologs
-
-prot = merge(prot,ogg11)
-
-all_prot = merge(f.est,prot,by.y = "gene_Mphar",by.x = "Gene")
-all_prot$SI = "no"
-all_prot$SI[all_prot$Gene %in% pm$Gene] = "yes"
-cor.test(1-all_prot$f,all_prot$A_S)
-cor.test(1-all_prot$f,all_prot$S_N)
-cor.test(1-all_prot$f,all_prot$A_N)
-
-pm_prot = merge(pm,prot,by.x = "Gene",by.y = "gene_Mphar")
-pm_prot$rate = (pm_prot$A_N+pm_prot$S_N)/2
-cor.test(pm_prot$SI,pm_prot$A_S)
-cor.test(pm_prot$SI,pm_prot$S_N)
-cor.test(pm_prot$SI,pm_prot$A_N)
-lm <- glm(SI ~ f, data = pm_prot)
-drop1(lm,.~.,test="Chi") 
-
-d2 = merge(prot,allP,by.x = "gene_Mphar",by.y = "Gene",all.y = TRUE)
-
-d2H = d2[d2$code=="CH",]
-d2G = d2[d2$code=="CG",]
-cor.test(d2G$reg_within,d2G$S_N)
-
-
-for (lev in levels(pm$PS4)){
-  print(sum(pm$PS4==lev))
-  print(lev)
-  print(cor.test(pm$f[pm$PS4==lev],pm$SI[pm$PS4==lev],method = "spearman"))
-}
 
 ########
 ##Secreted stuff
@@ -556,6 +408,50 @@ for (lev in levels(pm$PS4)){
 
 #########
 ##Test if DE genes tend to secreted in Drosophila melanogaster
+
+plot2 <- function(e){
+  p <- ggplot(e,aes(x=stage,y=expression,color=sample))+
+    geom_point(size=2,alpha=0.5)+
+    #ylim(1,3.5)+
+    geom_smooth(aes(group=sample,fill=sample),se=FALSE,size=1.5)+
+    xlab("larval developmental stage")+
+    #scale_color_manual(values = tissue_palette[c(1,3,4)])+
+    #scale_fill_manual(values = tissue_palette[c(1,3,4)])+
+    theme(legend.position = "none",
+          panel.background = element_blank(),
+          axis.line.x = element_line(color='black'),
+          axis.line.y = element_line(color='black'),
+          axis.title = element_text(size = 20, face = "bold"),
+          axis.text = element_text(size = 15),legend.title = element_blank(),legend.text = element_text(size=15))
+  
+  return(p)
+}
+
+nPlot <- function(genes,codes,samps){
+  nS = length(codes)
+  f = lapply(codes,function(c) factors[grepl(c,rownames(factors)),])
+  e = lapply(seq(1:nS),function(i) as.numeric(log(fpkm[genes[i],colnames(fpkm) %in% rownames(f[[i]])])))
+  eA = lapply(seq(1:nS),function(i){
+    x = e[[i]] - mean(e[[i]][f[[i]]$stage==1])
+    return(x)
+  })
+  eD = lapply(seq(1:nS),function(i) data.frame(expression = eA[[i]],stage=f[[i]]$stage,sample=samps[i]))
+  
+  e = ldply(eD,data.frame)
+  
+  levels(e$stage) = c("L1","L2","L3","L4","L5")
+  p <- plot2(e)
+  return(list(p,e))
+}
+
+plB <- nPlot(c("LOC105830675","LOC105837907"),c("CH","W_L"),c(" giant-lens (nurse head)   "," eps8 (larva)"))
+
+d = plB[[2]]
+dM = dcast(d, expression ~ sample,value.var="expression")
+cor.test(dM$expression[c(2:5)],dM$expression[c(6:9)],method="spearman")
+
+plB <- plB[[1]]+theme(legend.position = "top")
+
 ogg <- read.csv("~/Writing/Data/NurseSpecialization_transcriptomicData/ThreeWayOGGMap.csv") #Import 3-way OGG map
 df <- read.csv("~/Writing/Data/NurseSpecialization_transcriptomicData/Dmel_secreted.csv") #Derived from http://www.flyrnai.org/tools/glad/web/
 df = df[,c(1,2)]
@@ -566,7 +462,7 @@ oggK = oggK[!duplicated(oggK$OGG),]
 oggK$secreted = "no"
 oggK$secreted[oggK$V2 %in% df$Flybase] = "yes"
 oggK$secreted = factor(oggK$secreted,levels = c("yes","no"))
-dS = merge(allDN,oggK,by.x="Gene",by.y="gene_Mphar")
+dS = merge(all,oggK,by.x="Gene",by.y="gene_Mphar")
 
 dS$regR = rank(dS$reg_between)/nrow(dS)
 
@@ -574,6 +470,10 @@ dS1 = dS[dS$tissue=="nurse" & dS$code=="CH",]
 dS2 = dS[dS$tissue=="nurse" & dS$code=="CG",]
 wilcox.test(dS1$reg_between[dS1$secreted=="yes"],dS1$reg_between[dS1$secreted=="no"])
 wilcox.test(dS2$reg_between[dS2$secreted=="yes"],dS2$reg_between[dS2$secreted=="no"])
+lm <- glm(reg_between ~ secreted,data=dS2)
+
+wilcox.test(dS1$targ_between[dS1$secreted=="yes"],dS1$targ_between[dS1$secreted=="no"])
+wilcox.test(dS2$targ_between[dS2$secreted=="yes"],dS2$targ_between[dS2$secreted=="no"])
 dS1 = dS1[order(dS1$regR,decreasing = T),]
 dS2 = dS2[order(dS2$regR,decreasing = T),]
 dSe1 = dS1[dS1$secreted=="yes" & dS1$SwissProt!="-",]
@@ -585,18 +485,31 @@ makeTbl2(topG,"secGenes",8)
 
 levels(dS$secreted) = c(" secreted   "," not secreted   ")
 
-p <- ggplot(dS,aes(x=tissueC,y=reg_between,fill=secreted))+
+
+p <- ggplot(dS[dS$tissue=="nurse",],aes(x=tissueC,y=reg_between,fill=secreted))+
   geom_boxplot(outlier.shape = NA)+
   apatheme+
   ylab("social connectivity")+
   xlab("tissue")+
   coord_cartesian(ylim=c(0,0.3))+
-  theme(legend.position="top",
-        legend.title = element_blank(),
-        axis.line = element_line(color="black"))+
-  scale_fill_manual(values=c("grey30","grey60"))
+  theme(legend.position = "top",
+        panel.background = element_blank(),
+        axis.line.x = element_line(color='black'),
+        axis.line.y = element_line(color='black'),
+        axis.title = element_text(size = 20, face = "bold"),
+        axis.text = element_text(size = 15),legend.title = element_blank(),
+        legend.text = element_text(size=15))+
+  scale_fill_manual(values=c("grey30","grey60"))+
+  annotate("text",x=1,y=0.28,label="P = 0.011",size=4)+
+  annotate("text",x=2,y=0.28,label="P = 0.094",size=4)+
+  annotate("text",x=0.6,y=0.29,label="A",size=12,fontface="bold",color="gray29")
 
-ggsave(p,file = "~/GitHub/MonomoriumNurseLarva/Figures/secretedSup.png",height=6,width=6,dpi=300)
+plB <- plB + theme(legend.margin = margin(t=5,l=30,b=5,r=10))+
+  scale_color_manual(values=tissue_palette[c(3,1)])+
+  annotate("text",x=1,y=0.933,label="B",size=12,fontface="bold",color="gray29")
+
+pA <- arrangeGrob(p,plB,nrow=1)
+ggsave(pA,file="~/GitHub/MonomoriumNurseLarva/Figures/Fig3_all.png",height=4,width=12,dpi=300)
 
 #####GSEA
 go <- read.csv("~/Writing/Data/NurseSpecialization_transcriptomicData/GOannotation.csv")
@@ -663,8 +576,8 @@ makeTbl2 <- function(tbl,name,font){
 }
 
 colnames(GsNH)[6] = colnames(GsNG)[6] = "P-value"
-makeTbl2(GsNH,"NHGO",8)
-makeTbl2(GsNG,"NGGO",8)
+makeTbl2(GsNH,"NHGO",10)
+makeTbl2(GsNG,"NGGO",10)
 
 
 #spitz is LOC105833934
@@ -882,3 +795,19 @@ genIn = rbind(netL,netN)
 
 
 a = ann[ann$gene %in% rownames(netF),c("gene","DescriptionSP")]
+
+procoll ="LOC105833984"
+
+df <- read.csv("~/GitHub/MonomoriumNurseLarva/results/DEC16CGGenieMat.csv")
+rownames(df) = df[,1]
+d = as.vector(df[rownames(df)==paste("nurse",procoll,sep="_"),])
+d=d[-c(1)]
+d=t(d)
+d = d[grepl("larv",rownames(d)),]
+top = names(d)[d > quantile(d,0.9)]
+topL = gsub("larv_","",top)
+d = data.frame(Gene = topL,num=seq(1,100))
+dA = merge(d,ann[,c("gene","DescriptionSP")],by.x="Gene",by.y='gene')
+a = ENDogg[ENDogg$gene_Mphar %in% topL,]
+a[a$gene_Mphar %in% unique(c(egfr_genes,egfr_genes2,gl,spitz,jelly)),]
+
