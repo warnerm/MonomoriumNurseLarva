@@ -2,11 +2,9 @@ library(plyr)
 library(edgeR)
 library(reshape2)
 
-#Load counts, factors
-ext <- read.csv("~/Writing/Data/NurseSpecialization_transcriptomicData/MpharAnn.csv") #load in MBE results
-load("~/Dropbox/monomorium nurses/data.processed/ps_genelevelJuly29.RData")
-load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
-a = TAIgene$Mphar_E5 
+ext <- read.csv("data/MpharAnn.csv") #load in MBE results
+load("data/cleandata.RData") #Load counts, factors from Warner et al. 2017 MBE
+
 ext <- merge(ext,a,by.x="Gene",by.y="gene")
 
 #Filter for genes with phylostrata calls (they are long enough)
@@ -39,7 +37,7 @@ tests <- c("CH","CG","RH","RG","W_L")
 DEgene <- lapply(tests,stageGenes)
 names(DEgene) = tests
 
-save(DEgene,file = "~/Data/Nurse_Larva/DEstage_results.RData")
+save(DEgene,file = "results/DEstage_results.RData")
 lapply(DEgene,function(x) length(x[[1]]))
 
 #Only keep genes which aren't DE for random nurses
@@ -54,7 +52,7 @@ keepH <- rownames(Htop)[1:1000]
 keepG <- rownames(Gtop)[1:1000]
 keepL <- rownames(DEgene[[5]][[2]])[1:1000]
 
-save(keepH,keepG,keepL,file = "genes_for_genie.RData")
+save(keepH,keepG,keepL,file = "data/genes_for_genie.RData")
 
 
 
