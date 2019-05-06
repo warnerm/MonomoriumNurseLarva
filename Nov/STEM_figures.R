@@ -57,7 +57,7 @@ makeTbl <- function(tbl,name,font){
   g <- gtable::gtable_add_grob(g, grobs = separators,
                                t = 2, b = nrow(g), l = seq_len(ncol(g)-1)+1)
   p <- grid.arrange(g)
-  ggsave(p,file=paste("~/GitHub/MonomoriumNurseLarva/Figures/",name,".png",sep=""),width=10,height=4,dpi=300)
+  ggsave(p,file=paste("~/GitHub/MonomoriumNurseLarva/Figures/",name,".tiff",sep=""),width=10,height=4,dpi=300)
   
 }
 
@@ -190,7 +190,7 @@ tbl = do.call(cbind,lapply(list(nMod,nPos,nNeg,nGene),unlist))
 colnames(tbl) = c("number of\nsignificantly-enriched modules","modules positively\nshared with larvae","modules negatively\nshared with larvae","number of genes\nin shared modules")
 rownames(tbl) = c("stage-specific nurse head","random nurse head","stage-specific nurse abdomen","random nurse abdomen")
 
-makeTbl(tbl,"STEMtable",10)
+makeTbl(tbl,"TableS2",10)
 
 #Fisher's exact test
 lNum = length(unique(STEMdata[["WLarv"]][[1]])) - 1
@@ -317,7 +317,8 @@ mult=dim(image)[1]/dim(image)[2]
 theme_new = theme(legend.text = element_text(size = 9),
                   legend.title = element_text(size = 11,face="bold",
                                               margin = margin(t=0,b=-10,r=0,l=0)),
-                  legend.key.height = unit(0.6,"lines"))
+                  legend.key.height = unit(0.6,"lines"),
+                  title = element_text(size = 14,face="bold.italic"))
 
 theme_small = theme(axis.text = element_text(size=9),
                     axis.line = element_line())
@@ -325,14 +326,16 @@ theme_small = theme(axis.text = element_text(size=9),
 svg("~/GitHub/MonomoriumNurseLarva/Figures/allTogether2.svg",height = 8, width = 12)
 ggdraw()+
   draw_plot(Hplot[[1]]+scale_y_continuous(limits = c(-1.5,1.5))+
+              ggtitle("nurse head")+
               theme_new+
               theme(legend.position = "none",
                     axis.line = element_line(color = "black"))+
-              annotate("text",x = 1.2,y=-1.2,label="a",size=12,color="gray29")+
+              annotate("text",x = 1.2,y=-1.2,label="A",size=12,color="gray29")+
               ylab("expression change"), x = 0.05, y = 0.55, width = 0.4, height = 0.45)+
   draw_plot(Hplot[[2]]+scale_y_continuous(limits = c(-2,2))+
-              theme_small, x = 0.09, y = 0.8, width = 0.15, height = 0.175)+
-  draw_plot(Gplot[[1]]+annotate("text",x = 1.2,y=.4,label="b",size=12,color="gray29")+
+              theme_small, x = 0.09, y = 0.78, width = 0.15, height = 0.175)+
+  draw_plot(Gplot[[1]]+annotate("text",x = 1.2,y=.4,label="B",size=12,color="gray29")+
+              ggtitle("nurse abdomen")+
               scale_y_continuous(limits = c(-2,0.5),labels = c(-2,-1,0),breaks = c(-2,-1,0))+
               theme_new+ ylab("expression change")+
               theme(legend.position = "none",
@@ -340,7 +343,8 @@ ggdraw()+
             x = 0.55, y = 0.55, width = 0.4, height = 0.45)+
   draw_plot(Gplot[[2]]+
               theme_small,  x = 0.59, y = 0.59, width = 0.15, height = 0.175)+
-  draw_plot(HLplot[[1]]+annotate("text",x = 1.2,y=1.6,label="c",size=12,color="gray29")+
+  draw_plot(HLplot[[1]]+annotate("text",x = 1.2,y=1.6,label="C",size=12,color="gray29")+
+              ggtitle("larva (shared w/ head)")+
               scale_y_continuous(limits = c(-2,2))+
               theme_new+ylab("expression change")+
               theme(legend.position = "none",
@@ -349,7 +353,8 @@ ggdraw()+
   draw_plot(HLplot[[2]]+
               theme_small+scale_y_continuous(limits = c(-2,2)), x = 0.09, y = 0.04, width = 0.15, height = 0.175)+
   draw_plot(GLplot[[1]]+
-              annotate("text",x = 1.2,y=.8,label="d",size=12,color="gray29")+
+              ggtitle("larva (shared w/ abdomen)")+
+              annotate("text",x = 1.2,y=.8,label="D",size=12,color="gray29")+
               scale_y_continuous(limits = c(-2.5,1))+
               theme(legend.position = "none",
                     axis.line = element_line(color = "black"))+
@@ -431,6 +436,13 @@ nGeneStats <- ldply(lapply(c(nGeneShared_Larv,nGeneShared),function(x){
 }))
 colnames(nGeneStats) = c("mean","ci1","ci2")
 
+#Wilcoxon Tests
+wilcox.test(nGeneShared_Larv[[1]],nGeneShared_Larv[[2]])
+wilcox.test(nGeneShared_Larv[[3]],nGeneShared_Larv[[4]])
+
+wilcox.test(nGeneShared[[1]],nGeneShared[[2]])
+wilcox.test(nGeneShared[[3]],nGeneShared[[4]])
+
 
 #Table for numbers of genes and number of modules
 nMod <- lapply(c("NurseH","RNurseH","NurseG","RNurseG"),function(x) length(unique(STEMdata[[x]][[1]])))
@@ -448,6 +460,10 @@ d_bar = data.frame(t = c(rep(c("larva \u2192 nurse head","larva \u2192 nurse abd
 d_bar$type = factor(d_bar$type, levels = c(" stage-specific nurse       "," random nurse       "))
 d_bar = cbind(d_bar,nGeneStats)
 
+d = d_bar
+colnames(d)[c(1:2)] = c("connection type","number of genes")
+write.table(d,file="data_files/Fig2E.txt",row.names=F)
+
 p <- ggplot(d_bar,aes(x = t,y=mean,fill=type))+
   geom_bar(stat="identity",color="black",position = position_dodge())+
   scale_fill_manual(values = c("gray70","gray45"))+
@@ -460,7 +476,7 @@ p <- ggplot(d_bar,aes(x = t,y=mean,fill=type))+
         axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1,size=15),
         axis.line = element_line(color="black"),
         legend.text=element_text(size=15))+
-  annotate("text",x = 1,y=9000,label="e",size=14,color="gray29")+
+  annotate("text",x = 1,y=9000,label="E",size=14,color="gray29")+
   geom_errorbar(aes(ymin=ci1,ymax=ci2),position=position_dodge(width = 0.9),width = 0.5,size=1)
 
 svg("~/GitHub/MonomoriumNurseLarva/Figures/NgeneSup_errorbar.svg",height = 8, width = 5)

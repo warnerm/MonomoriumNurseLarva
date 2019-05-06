@@ -100,9 +100,9 @@ allDf$tissueC = factor(allDf$tissueC,levels = c("larva \u2192 nurse head","larva
 
 plot2 <- function(e){
   p <- ggplot(e,aes(x=stage,y=expression,color=sample))+
-    geom_point()+
+    geom_point(size=2,alpha=0.5)+
     #ylim(1,3.5)+
-    geom_smooth(aes(group=sample,fill=sample),se=FALSE)+
+    geom_smooth(aes(group=sample,fill=sample),se=FALSE,size=1.5)+
     xlab("larval developmental stage")+
     #scale_color_manual(values = tissue_palette[c(1,3,4)])+
     #scale_fill_manual(values = tissue_palette[c(1,3,4)])+
@@ -134,13 +134,24 @@ nPlot <- function(genes,codes,samps){
   return(p)
 }
 
-plB <- nPlot(c("LOC105830675","LOC105837907"),c("CH","W_L"),c("giant-lens (nurse head)","eps8 (larva)"))
+plB <- nPlot(c("LOC105830675","LOC105837907"),c("CH","W_L"),c(" giant-lens (nurse head)   "," eps8 (larva)"))
 #plB <- nPlot(c("LOC105830675","LOC105830675"),c("1LCH|XH","1LW|LS"),c("giant-lens (nurse head)","giant-lens (larva)"))
 
-plB <- plB+theme(legend.position = c(0.2,0.2))
+plB <- plB+theme(legend.position = "top")
 
 
-plB <- nPlot(c("LOC105837907","LOC105837907"),c("1LW|LS","W_L"),c("eps8 (sex larva)","eps8 (worker larva)"))
+pls <- nPlot(c("LOC105837907","LOC105837907"),c("1LW|LS","W_L"),c(" eps8 (sex larva)   "," eps8 (worker larva)   "))
+pls <- pls+ theme(legend.position="top",legend.margin = margin(t=5,l=30,b=5,r=10))+
+  scale_color_manual(values=tissue_palette[c(1,2)])
+ggsave(pls,file="~/GitHub/MonomoriumNurseLarva/Figures/FigS6.png",height=6,width=6,dpi=300)
+
+
+plg <- nPlot(c("LOC105830675","LOC105830675"),c("CH","W_L"),c(" giant-lens (nurse head)   "," giant-lens (larva)   "))
+plg <- plg+ theme(legend.position="top",legend.margin = margin(t=5,l=30,b=5,r=10))+
+  scale_color_manual(values=tissue_palette[c(3,1)])
+ggsave(plg,file="~/GitHub/MonomoriumNurseLarva/Figures/FigS5.png",height=6,width=6,dpi=300)
+
+
 
 plC <- nPlot(c("LOC105833314","LOC105838382"),c("W_L","W_L"),c("importin-7 (worker larva)","asteroid (worker larva)"))
 plC <- plC+theme(legend.position = c(0.6,0.8))
@@ -206,37 +217,31 @@ makeTbl2(topG,"secGenes",8)
 
 levels(dS$secreted) = c(" secreted   "," not secreted   ")
 
+
 p <- ggplot(dS[dS$tissue=="nurse",],aes(x=tissueC,y=reg_between,fill=secreted))+
   geom_boxplot(outlier.shape = NA)+
-  #geom_violin()+
   apatheme+
   ylab("social connectivity")+
   xlab("tissue")+
   coord_cartesian(ylim=c(0,0.3))+
-  theme(legend.position="top",
-        legend.title = element_blank(),
-        axis.line = element_line(color="black"))+
+  theme(legend.position = "top",
+        panel.background = element_blank(),
+        axis.line.x = element_line(color='black'),
+        axis.line.y = element_line(color='black'),
+        axis.title = element_text(size = 20, face = "bold"),
+        axis.text = element_text(size = 15),legend.title = element_blank(),
+        legend.text = element_text(size=15))+
   scale_fill_manual(values=c("grey30","grey60"))+
-  annotate("text",x=1,y=0.28,label="*",size=12)+
-  annotate("text",x=2,y=0.3,label="ns",size=12)
+  annotate("text",x=1,y=0.28,label="P = 0.011",size=4)+
+  annotate("text",x=2,y=0.28,label="P = 0.094",size=4)+
+  annotate("text",x=0.6,y=0.29,label="a",size=12,fontface="bold")
 
-
-p <- ggplot(dS[dS$tissue=="nurse",],aes(x=tissueC,y=reg_within,fill=secreted))+
-  geom_boxplot(outlier.shape = NA)+
-  #geom_violin()+
-  apatheme+
-  ylab("social connectivity")+
-  xlab("tissue")+
-  #coord_cartesian(ylim=c(0,0.3))+
-  theme(legend.position="top",
-        legend.title = element_blank(),
-        axis.line = element_line(color="black"))+
-  scale_fill_manual(values=c("grey30","grey60"))+
-  annotate("text",x=1,y=0.28,label="*",size=12)+
-  annotate("text",x=2,y=0.3,label="ns",size=12)
+plB <- plB + theme(legend.margin = margin(t=5,l=30,b=5,r=10))+
+  scale_color_manual(values=tissue_palette[c(3,1)])+
+  annotate("text",x=1,y=0.933,label="b",size=12,fontface="bold")
 
 pA <- arrangeGrob(p,plB,nrow=1)
-ggsave(pA,file="~/GitHub/MonomoriumNurseLarva/Figures/Fig3_all.png",height=6,width=12,dpi=300)
+ggsave(pA,file="~/GitHub/MonomoriumNurseLarva/Figures/Fig3_all.png",height=4,width=12,dpi=300)
 
 
 # 
