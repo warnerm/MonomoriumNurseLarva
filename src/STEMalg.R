@@ -6,10 +6,7 @@ library(rslurm)
 library(plyr)
 library(combinat)
 
-ext <- read.csv("MpharAnn.csv") #load in MBE results
-load("ps_genelevelJuly29.RData")
-a = TAIgene$Mphar_E5 
-ext <- merge(ext,a,by.x="Gene",by.y="gene")
+ext <- read.csv("data/MpharAnn.csv") #load in MBE results
 
 #Filter for genes with phylostrata calls (they are long enough)
 keep = ext$Gene[!is.na(ext$ps)]
@@ -45,7 +42,7 @@ SetProfiles <- function(timepoints){
 
 ###As input to the algorithm, we need the mean expression across samples of a given type at each developmental stage
 CountsbyStage <- function(code,drop=NULL){
-  load("cleandata.RData")
+  load("data/cleandata.RData")
   counts <- counts[rownames(counts) %in% keep,grep(code,colnames(counts))]
   
   #for permuation test, drop a sample
@@ -168,14 +165,11 @@ codes = c("W.*_L","QW","CH","CG","QCH","QCG","R.*_WH","R.*_WG","LCH","LCG","LW")
 names = c("WLarv","WlarvQR","NurseH","NurseG",
           "NurseHQR","NurseGQR","RNurseH","RNurseG","NurseHQL","NurseGQL","WLarvQL")
 names(names) = codes
-#for (code in codes){
-#  StageExpr <- CountsbyStage(code)
-#  Alg(names[code])
-#}
 
+#Sequentially drop samples, assign nurse samples to profiles
 codes_perm = c("CH","CG","R.*_WH","R.*_WG")
 for (code in codes_perm){
-  load("cleandata.RData")
+  load("data/cleandata.RData")
   nSamp = sum(grepl(code,rownames(factors)))
   for (i in 1:nSamp){
     StageExpr <- CountsbyStage(code,drop=i)

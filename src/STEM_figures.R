@@ -5,15 +5,13 @@ library(reshape2)
 library(ggplot2)
 library(grid)
 library(gridExtra)
-library(edgeR)
-library(topGO)
 library(scales)
 library(ggmosaic)
 library(questionr)
-library(VennDiagram)
 library(multcomp)
 library(cowplot)
 library(gtable)
+library(rsvg)
 
 
 apatheme=theme_bw()+
@@ -61,25 +59,22 @@ makeTbl <- function(tbl,name,font){
   
 }
 
-#After transferring files:
-files <- dir("~/Data/Nurse_Larva/FDR0.05/",pattern=".*membership.RData")
+#Get file names
+files <- dir("~/data/",pattern=".*membership.RData")
 
 #trim file names to get the sample information
 names <- lapply(1:length(files),function(x) gsub(" STEMmembership.RData","",files[x]))
 STEMdata <- list()
 
+#Import annotation from Warner et al. 2017 MBE
 ext <- read.csv("~/Writing/Data/NurseSpecialization_transcriptomicData/MpharAnn.csv") #load in MBE results
-load("~/Dropbox/monomorium nurses/data.processed/ps_genelevelJuly29.RData")
-a = TAIgene$Mphar_E5 
-ext <- merge(ext,a,by.x="Gene",by.y="gene")
-
 
 #Filter for genes with phylostrata calls (they are long enough)
 keep = ext$Gene[!is.na(ext$ps)]
 
 #load all in, store, in STEM data
 for (i in 1:length(files)){
-  load(paste("~/Data/Nurse_Larva/FEB26/",files[i],sep=""))
+  load(paste("data/",files[i],sep=""))
   STEMdata[[i]] = results
 }
 names(STEMdata) = names
@@ -90,11 +85,14 @@ pal1 = c("lightgoldenrod1","cornflowerblue","brown1","tan1","black")
 pal2 = cbbPalette[c(8,4,2,5,11)]
 pal3 = c(pal1,pal2)
 
+#Predefine expression possible profiles
 SetProfiles <- function(timepoints){
   profiles <- matrix(ncol=timepoints)
   profiles = as.data.frame(profiles)
   colnames(profiles) = paste("Stage",seq(1,timepoints,1))
-  posMoves = c(-1,0,1)
+  posMoves = c(-1,0,1) #Restrict moves to doubling, halving, or no change (note that this is log2 fold-change)
+  
+  #Algorithm from Ernst et al. 2005 to define all possible expression profiles
   for (i2 in -1:1){
     for (i3 in -2:2){
       for (i4 in -3:3){
@@ -121,6 +119,7 @@ SetProfiles <- function(timepoints){
 
 profiles5 <- SetProfiles(5)
 
+#Calculate counts across each stage
 CountsbyStage <- function(code){
   load("~/Dropbox/monomorium nurses/data.processed/cleandata.RData")
   counts <- counts[rownames(counts) %in% keep,grep(code,colnames(counts))]
@@ -153,6 +152,8 @@ sharedDf <- function(nurse,larv,lSTEM,nSTEM){
   lE = as.data.frame(CountsbyStage(larv))
   nE$Gene = rownames(nE)
   lE$Gene = rownames(lE)
+  
+  #Gets the defined module of each gene
   nE$Module = STEMdata[[nSTEM]]$GeneMembership
   lE$Module = STEMdata[[lSTEM]]$GeneMembership
   nEm = melt(nE,id.vars = c("Gene","Module"))
@@ -172,6 +173,7 @@ sharedDf <- function(nurse,larv,lSTEM,nSTEM){
   return(list(all,posShared,negShared))
 }
 
+#Generate plots, lists of shared genes
 Hshare <- sharedDf("CH","W_L","WLarv","NurseH")
 RHshare <- sharedDf("RH","QW","WlarvQR","RNurseH")
 Gshare <- sharedDf("CG","W_L","WLarv","NurseG")
@@ -227,9 +229,14 @@ nGene = unlist(lapply(Gshare[[2]],function(x){
 
 Gmod = Gshare[[2]][order(nGene,decreasing = TRUE)][1:5]
 
+#Make a plot of genes in shared modules for larvae and nurses
 sharedPlot <- function(mod,tissue,df,pal,flip = FALSE){
+  
+  #restrict to identified modules
   dN = df[(df$Module %in% mod & df$tissue == tissue),]
   dN$Module = factor(dN$Module,levels = mod)
+  
+  #get dummy profiles
   nTop = profiles5[mod,]
   nTop$profile = levels(dN$Module)
   nTopM = melt(nTop,id.vars = "profile")
@@ -245,6 +252,8 @@ sharedPlot <- function(mod,tissue,df,pal,flip = FALSE){
   }
   dN$variable=as.factor(dN$variable)
   levels(dN$variable) = c("L1","L2","L3","L4","L5")
+  
+  #make plot of shared genes
   p1 <- ggplot(dN,aes(x = variable, y = value))+
     geom_line(alpha = 0.1,aes(color = Module,group = Gene))+
     apatheme+
@@ -261,6 +270,8 @@ sharedPlot <- function(mod,tissue,df,pal,flip = FALSE){
   p1 <- p1 + geom_line(data = nMed,aes(x = variable,y=med,group=Module),alpha = 1,size = 1.5,color="black")+
     geom_line(data = nMed,aes(x = variable,y=med,group=Module,color = Module),alpha = 1,size = 1.2)
   levels(nTopM$variable) = c("L1","L2","L3","L4","L5")
+  
+  #Make inset plot of the top model profiles
   p1o <- ggplot(nTopM)+
     geom_line(size = 1.5,data = nTopM, alpha = 0.8,
               aes(x = variable, y = value,color = profile,group=profile))+
@@ -275,42 +286,17 @@ sharedPlot <- function(mod,tissue,df,pal,flip = FALSE){
   return(list(p1,p1o))
 }
 
-barCharts <- function(data1,data2,tissue){
-  shared = lapply(list(data1,data2),function(d){
-    mod2 = as.integer(as.character(d[[3]]))
-    
-    #Nurse negatively associated modules are indexed as larval modules
-    if (tissue=="nurse") mod2 = 81 - mod2
-    mods = c(d[[2]],mod2)
-    mods = mods[!is.na(mods)]
-    
-    return(sum(d[[1]]$Module %in% mods & d[[1]]$tissue == tissue)/5)
-  })
-  d = data.frame(t1=c("f","f"),type=c("focal","random"),prop=unlist(shared)/(nrow(Hshare[[1]])/10))
-  p <- ggplot(d,aes(x=type,y=prop,fill=type))+
-    geom_bar(stat="identity",color="black",position=position_dodge(),width=0.9)+
-    scale_fill_manual(values = c("black","lightgray"))+
-    ylab("")+
-    xlab("")+
-    scale_y_continuous(limits=c(0,1),breaks = c(0,0.5,1),position = "right")+
-    apatheme+
-    theme(legend.position="none",
-          axis.line = element_line(color="black"))
-  return(p)
-}
-
-barH <- barCharts(Hshare,RHshare,"nurse")
-
 Gplot <- sharedPlot(Gmod,"nurse",Gshare[[1]],pal1)
 GLplot <- sharedPlot(Gmod,"larva",Gshare[[1]],pal1)
 Hplot <- sharedPlot(Hmod,"nurse",Hshare[[1]],pal2)
 HLplot <- sharedPlot(lMod,"larva",Hshare[[1]],pal2)
 
+
+#Construct viewport to load the nurse/larva svg into
 vp <- viewport(width = 0.3, height = 0.3, x = 0.25, y = 0.25)
 
-library(cowplot)
-library(rsvg)
-image <- rsvg("~/Downloads/smaller larva with shadow.svg")
+#Load nurse/larva image
+image <- rsvg("Figures/smaller larva with shadow.svg")
 mult=dim(image)[1]/dim(image)[2]
 
 
@@ -323,6 +309,7 @@ theme_new = theme(legend.text = element_text(size = 9),
 theme_small = theme(axis.text = element_text(size=9),
                     axis.line = element_line())
 
+#Put all of the plots in one place with ggdraw()
 svg("~/GitHub/MonomoriumNurseLarva/Figures/allTogether2.svg",height = 8, width = 12)
 ggdraw()+
   draw_plot(Hplot[[1]]+scale_y_continuous(limits = c(-1.5,1.5))+
@@ -396,11 +383,12 @@ ggdraw()+
 dev.off()
 
 #######
-##Loading drop-1 STEM
+##Fig 2e
 #######
 Lmod = unique(STEMdata[["WLarv"]][[1]])
 Lmod = Lmod[!is.na(Lmod)]
 
+#Calculate number of genes shared
 calcOverlap <- function(data,Cmod){
   mods = unique(data)
   shared = mods[mods %in% Cmod]
@@ -412,6 +400,7 @@ calcOverlap <- function(data,Cmod){
 patterns = c("^NurseH","RNurseH","^NurseG","RNurseG")
 files <- lapply(patterns,function(x) dir("~/Data/Nurse_Larva/STEM_drop1/",pattern=x))
 
+#Load in data from drop1 sampling
 drop1Data <- lapply(files,function(x){
   lapply(x, function(i){
     load(paste("~/Data/Nurse_Larva/STEM_drop1/",i,sep=""))
