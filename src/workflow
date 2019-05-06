@@ -1,8 +1,0 @@
-Rscript corApproach.R #done
-Rscript getGeneType.R #done
-sbatch findK.py #done - 12
-#Extract number of modules, use as input to assignNurseMods.py
-sbatch assignNurseMods.py
-Rscript getConn.R
-
-#Then analyze with corAnalysis.R
