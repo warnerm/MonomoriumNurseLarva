@@ -1,6 +1,7 @@
 # MonomoriumNurseLarva
 
 This repository contains all relevant analysis for the following publication:
+
 Warner, M.R., Mikheyev, A.S. & Linksvayer, T.A. 2019. Transcriptomic basis and evolution of the 
 ant social interactome. In press, PLOS Genetics. Preprint: https://doi.org/10.1101/514356
 
